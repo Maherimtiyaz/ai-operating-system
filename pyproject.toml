@@ -1,0 +1,92 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "aiop"
+version = "0.1.0"
+description = "AI Operating Platform - Next-Generation Windows AI Productivity Suite"
+readme = "README.md"
+authors = ["Mahi Maher <mahi@example.com>"]
+license = "Apache-2.0"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Desktop Environment",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Office/Business",
+    "Topic :: Utilities",
+]
+
+[tool.poetry.dependencies]
+python = "^3.11 || ^3.12"
+PyQt6 = "^6.6.0"
+PyQt6-Qt6 = "^6.6.0"
+PyQt6-sip = "^13.6.0"
+pyaudio = "^0.2.14"
+webrtcvad = "^2.0.10"
+numpy = "^1.26.0"
+pyyaml = "^6.0.1"
+requests = "^2.31.0"
+websockets = "^12.0"
+psutil = "^5.9.8"
+pywin32 = { version = "^306", platform = "win32" }
+setuptools = "^69.0.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.3.0"
+black = "^24.0.0"
+mypy = "^1.8.0"
+pytest = "^8.0.0"
+pytest-qt = "^4.4.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^4.1.0"
+pre-commit = "^3.6.0"
+mkdocs = "^1.5.0"
+mkdocs-material = "^9.5.0"
+
+[tool.poetry.scripts]
+aiop = "aiop.main:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.isort]
+known-first-party = ["aiop"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+qt_api = "pyqt6"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
