@@ -40,7 +40,7 @@ class AudioChunk:
     sample_rate: int
     channels: int
     format: AudioFormat
-    timestamp: float = field(default_factory=lambda: time.time() if 'time' in globals() else 0)
+    timestamp: float = field(default_factory=time.time)
 
 
 class AudioStream:

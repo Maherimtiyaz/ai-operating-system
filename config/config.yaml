@@ -1,0 +1,54 @@
+ai:
+  cloud_providers:
+  - openai
+  - anthropic
+  default_model: llama3:8b
+  local_models_dir: models
+  max_context: 4096
+  temperature: 0.7
+  top_p: 0.9
+audio:
+  channels: 1
+  chunk_size: 1024
+  device_index: null
+  format: int16
+  sample_rate: 16000
+automation:
+  max_concurrent_workflows: 5
+  timeout_seconds: 300
+  workflows_dir: workflows
+mcp:
+  auto_discover: true
+  servers: {}
+  timeout_seconds: 30
+plugin:
+  allowed_permissions:
+  - read:files
+  - write:files
+  - execute:code
+  - access:network
+  auto_load: true
+  plugins_dir: plugins
+  sandbox_enabled: true
+speech:
+  beam_size: 5
+  language: en
+  model_path: models/ggml-base.en.bin
+  model_type: whisper-1
+  temperature: 0.0
+  use_vad: true
+  vad_aggressiveness: 3
+ui:
+  font_size: 12
+  overlay_height: 200
+  overlay_position: bottom_right
+  overlay_width: 400
+  show_tray_icon: true
+  theme: system
+windows:
+  hotkey_ai_assistant: Ctrl+Shift+A
+  hotkey_dictation: Ctrl+Shift+Space
+  hotkey_workflows: Ctrl+Shift+W
+  minimize_to_tray: true
+  run_in_tray: true
+  start_on_boot: true

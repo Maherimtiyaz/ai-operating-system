@@ -71,7 +71,7 @@ class HotkeyManager:
         except Exception as e:
             logger.error(f"Failed to setup hotkey window: {e}")
     
-    def _window_proc_impl(self, hwnd, msg, wparam, lparam) -> ctypes.wintypes.LRESULT:
+    def _window_proc_impl(self, hwnd, msg, wparam, lparam):
         """Window procedure implementation"""
         if msg == 0x0312:  # WM_HOTKEY
             hotkey_id = wparam

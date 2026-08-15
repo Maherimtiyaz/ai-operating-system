@@ -194,11 +194,6 @@ class AudioProcessor:
         
         self._last_was_speech = result.is_speech
         return False
-    
-    def __init__(self, *args, **kwargs):
-        # Deprecated: _last_was_speech is now initialized in main __init__
-        # This method is kept for backward compatibility only
-        pass
 
 
 # Global audio processor instance
