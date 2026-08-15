@@ -15,6 +15,7 @@ from ..speech import SpeechTranscriber, TranscriptionResult
 from ..windows import get_clipboard, get_win32_api
 from .overlay import DictationOverlay, get_overlay
 from .styles import apply_theme, Colors
+from .settings_dialog import SettingsDialog
 
 logger = logging.get_logger(__name__)
 
@@ -60,9 +61,13 @@ class MainWindow(QMainWindow):
         self._setup_main_view()
         self._stacked_widget.addWidget(self._main_view)
         
-        # Settings view (placeholder)
+        # Settings view
         self._settings_view = QWidget()
+        self._setup_settings_view()
         self._stacked_widget.addWidget(self._settings_view)
+        
+        # Settings dialog (modal)
+        self._settings_dialog: Optional[SettingsDialog] = None
         
         # Show main view by default
         self._stacked_widget.setCurrentWidget(self._main_view)
@@ -165,6 +170,24 @@ class MainWindow(QMainWindow):
         clipboard_group.addWidget(self._copy_button)
         
         layout.addLayout(clipboard_group)
+    
+    def _setup_settings_view(self) -> None:
+        """Set up settings view (placeholder for tab-based navigation)"""
+        from PyQt6.QtWidgets import QLabel, QVBoxLayout
+        
+        layout = QVBoxLayout(self._settings_view)
+        layout.setContentsMargins(12, 12, 12, 12)
+        
+        # Placeholder label directing to modal dialog
+        placeholder_label = QLabel(
+            "<h3>Settings</h3>"
+            "<p>For detailed configuration options, please use the Settings dialog.</p>"
+            "<p><b>Tip:</b> Press the Settings button in the system tray or click 'Settings' in the menu.</p>"
+        )
+        placeholder_label.setStyleSheet("color: #a0a0a0; font-size: 14px; padding: 20px;")
+        placeholder_label.setWordWrap(True)
+        layout.addWidget(placeholder_label)
+        layout.addStretch()
     
     def _setup_tray(self) -> None:
         """Set up system tray icon"""
@@ -316,8 +339,20 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(2000, lambda: self._status_label.setText("Ready"))
     
     def on_settings(self) -> None:
-        """Open settings"""
-        self._stacked_widget.setCurrentWidget(self._settings_view)
+        """Open settings dialog"""
+        if self._settings_dialog is None:
+            self._settings_dialog = SettingsDialog(self)
+            self._settings_dialog.settings_saved.connect(self._on_settings_saved)
+        
+        self._settings_dialog.show()
+        self._settings_dialog.raise_()
+        self._settings_dialog.activateWindow()
+    
+    def _on_settings_saved(self) -> None:
+        """Handle settings saved event"""
+        logger.info("Settings saved, reloading configuration...")
+        self._config = config.get_config()
+        # Could refresh UI elements here if needed
     
     def on_tray_activated(self, reason) -> None:
         """Handle tray icon activation"""
