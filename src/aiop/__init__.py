@@ -9,7 +9,10 @@ __author__ = "Mahi Maher"
 __license__ = "Apache-2.0"
 
 from .core import config, logging
-from . import audio, speech, windows, ui, ai, automation, plugins, mcp
+from . import audio, speech, windows, ui
+
+# Note: ai, automation, plugins, and mcp modules are planned for future phases
+# from . import ai, automation, plugins, mcp
 
 # Initialize logging
 logger = logging.get_logger(__name__)

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from ..core import logging, utils
-from .language import LanguageInfo, get_language
+from .language import LanguageInfo, get_language, LANGUAGES
 
 logger = logging.get_logger(__name__)
 
@@ -67,7 +67,7 @@ class ModelManager:
             "file_name": "ggml-tiny.bin",
             "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin",
             "sha256": "d2b3e7ff54453dfa058f41564259542157003670668038d37463166239587593",
-            "languages": [lang.code for lang in list(LanguageInfo.__dataclass_fields__.values()) if lang.code != "en"],
+            "languages": [lang.code for lang in LANGUAGES.values() if lang.code != "en"],
             "is_multilingual": True,
         },
         "base.en": {
@@ -91,7 +91,7 @@ class ModelManager:
             "file_name": "ggml-base.bin",
             "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
             "sha256": "4a2236d91789f7565d733a958456c36252f6884929ca936571397e824588034a",
-            "languages": [lang.code for lang in list(LanguageInfo.__dataclass_fields__.values())],
+            "languages": [lang.code for lang in LANGUAGES.values()],
             "is_multilingual": True,
         },
         "small.en": {
@@ -115,7 +115,7 @@ class ModelManager:
             "file_name": "ggml-small.bin",
             "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
             "sha256": "32d247d81943568439403321728843a4d456e742841d159438727e1626985135",
-            "languages": [lang.code for lang in list(LanguageInfo.__dataclass_fields__.values())],
+            "languages": [lang.code for lang in LANGUAGES.values()],
             "is_multilingual": True,
         },
         "medium.en": {
@@ -139,7 +139,7 @@ class ModelManager:
             "file_name": "ggml-medium.bin",
             "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin",
             "sha256": "913694523579957698359124455493211859079283619839226735899195541",
-            "languages": [lang.code for lang in list(LanguageInfo.__dataclass_fields__.values())],
+            "languages": [lang.code for lang in LANGUAGES.values()],
             "is_multilingual": True,
         },
         "large-v1": {
@@ -151,7 +151,7 @@ class ModelManager:
             "file_name": "ggml-large-v1.bin",
             "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v1.bin",
             "sha256": "2a64429706949d43a72a153c4f567e7b931692483d36749d8189987134148131",
-            "languages": [lang.code for lang in list(LanguageInfo.__dataclass_fields__.values())],
+            "languages": [lang.code for lang in LANGUAGES.values()],
             "is_multilingual": True,
         },
         "large-v2": {
@@ -163,7 +163,7 @@ class ModelManager:
             "file_name": "ggml-large-v2.bin",
             "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v2.bin",
             "sha256": "815277523722418644847793554986631925399019979199389939137470194",
-            "languages": [lang.code for lang in list(LanguageInfo.__dataclass_fields__.values())],
+            "languages": [lang.code for lang in LANGUAGES.values()],
             "is_multilingual": True,
         },
         "large-v3": {
@@ -175,7 +175,7 @@ class ModelManager:
             "file_name": "ggml-large-v3.bin",
             "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
             "sha256": "913376094479958898359124455493211859079283619839226735899195541",
-            "languages": [lang.code for lang in list(LanguageInfo.__dataclass_fields__.values())],
+            "languages": [lang.code for lang in LANGUAGES.values()],
             "is_multilingual": True,
         },
     }

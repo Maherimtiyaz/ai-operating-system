@@ -2,6 +2,7 @@
 Audio capture for AIOP
 """
 
+import time
 import pyaudio
 import numpy as np
 from typing import Generator, Optional, Callable, Any
@@ -39,7 +40,7 @@ class AudioChunk:
     sample_rate: int
     channels: int
     format: AudioFormat
-    timestamp: float = field(default_factory=lambda: time.time() if 'time' in globals() else 0)
+    timestamp: float = field(default_factory=time.time)
 
 
 class AudioStream:
