@@ -181,7 +181,14 @@ class ConfigManager:
         """Update configuration values"""
         for key, value in kwargs.items():
             if hasattr(self.config, key):
-                setattr(self.config, key, value)
+                obj = getattr(self.config, key)
+                # Handle nested config objects (dataclasses)
+                if isinstance(value, dict) and hasattr(obj, '__dataclass_fields__'):
+                    for subkey, subvalue in value.items():
+                        if hasattr(obj, subkey):
+                            setattr(obj, subkey, subvalue)
+                else:
+                    setattr(self.config, key, value)
         self._save_config()
     
     def reload(self) -> None:
