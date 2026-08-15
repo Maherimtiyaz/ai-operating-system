@@ -5,8 +5,9 @@ Whisper.cpp integration for AIOP
 import ctypes
 import os
 import time
+import numpy as np
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, Generator
 from dataclasses import dataclass, field
 from ..core import logging, exceptions, utils
 from .model_manager import get_model_path, ModelManager

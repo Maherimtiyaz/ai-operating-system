@@ -121,6 +121,7 @@ class AudioProcessor:
         self.vad = VoiceActivityDetector(vad_config) if use_vad else None
         self._audio_buffer: List[bytes] = []
         self._buffer_size = sample_rate  # 1 second buffer
+        self._last_was_speech = False
     
     def process_chunk(self, audio_chunk: AudioChunk) -> ProcessingResult:
         """Process an audio chunk"""
@@ -195,8 +196,9 @@ class AudioProcessor:
         return False
     
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._last_was_speech = False
+        # Deprecated: _last_was_speech is now initialized in main __init__
+        # This method is kept for backward compatibility only
+        pass
 
 
 # Global audio processor instance

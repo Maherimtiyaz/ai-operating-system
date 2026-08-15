@@ -2,6 +2,7 @@
 Audio capture for AIOP
 """
 
+import time
 import pyaudio
 import numpy as np
 from typing import Generator, Optional, Callable, Any
