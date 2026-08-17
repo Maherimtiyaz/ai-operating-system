@@ -38,7 +38,7 @@ def check_dependencies() -> bool:
         "pyaudio",
         "webrtcvad",
         "numpy",
-        "pyyaml",
+        "yaml",  # PyYAML package
     ]
     
     missing = []
