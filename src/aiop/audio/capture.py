@@ -5,7 +5,7 @@ Audio capture for AIOP
 import time
 import pyaudio
 import numpy as np
-from typing import Generator, Optional, Callable, Any
+from typing import Generator, Optional, Callable, Any, List
 from dataclasses import dataclass, field
 from enum import Enum
 from ..core import logging, exceptions
@@ -237,6 +237,16 @@ class AudioCapture:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
+    
+    def list_input_devices(self) -> List[AudioDeviceInfo]:
+        """List available input devices"""
+        devices_manager = get_audio_devices()
+        return devices_manager.list_input_devices()
+    
+    def list_output_devices(self) -> List[AudioDeviceInfo]:
+        """List available output devices"""
+        devices_manager = get_audio_devices()
+        return devices_manager.list_output_devices()
 
 
 # Global audio capture instance
