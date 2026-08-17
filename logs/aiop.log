@@ -1,0 +1,153 @@
+2026-08-15 12:40:55 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:40:55 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:41:00 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:41:00 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:41:17 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:41:17 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:41:27 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:41:27 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:41:33 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:41:33 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:41:33 - aiop - INFO - Test log message
+2026-08-15 12:41:33 - aiop - ERROR - Test error message
+2026-08-15 12:41:38 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:41:38 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:41:38 - aiop - INFO - Test log message
+2026-08-15 12:41:38 - aiop - ERROR - Test error message
+2026-08-15 12:57:57 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:57:57 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:00 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:00 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:07 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:07 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:10 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:10 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:17 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:17 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:25 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:25 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:34 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:34 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:37 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:37 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:46 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:46 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:46 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-15 12:58:53 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-15 12:58:53 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 12:58:53 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-15 12:58:53 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/tmpd1n19p9l/config/config.yaml", line 1, column 14
+2026-08-15 13:45:47 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 13:45:50 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 13:45:53 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 13:47:20 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 13:47:32 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 13:48:56 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 13:49:01 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-15 13:49:08 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:44:21 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-17 12:44:21 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:44:56 - aiop.ui - WARNING - UI modules not available: cannot import name 'TranscriptionResult' from 'aiop.speech' (/workspace/src/aiop/speech/__init__.py)
+2026-08-17 12:44:56 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:45:18 - aiop.ui - WARNING - UI modules not available: cannot import name 'get_clipboard' from 'aiop.windows' (/workspace/src/aiop/windows/__init__.py)
+2026-08-17 12:45:18 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:45:41 - aiop.ui - WARNING - UI modules not available: No module named 'aiop.ui.settings_dialog'
+2026-08-17 12:45:41 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:46:01 - aiop.ui - WARNING - UI modules not available: No module named 'aiop.ui.settings_dialog'
+2026-08-17 12:46:01 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:46:06 - aiop.ui - WARNING - UI modules not available: No module named 'aiop.ui.settings_dialog'
+2026-08-17 12:46:06 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:46:12 - aiop.ui - WARNING - UI modules not available: No module named 'aiop.ui.settings_dialog'
+2026-08-17 12:46:12 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:56:55 - aiop.ui - WARNING - UI modules not available: cannot import name 'TranscriptionResult' from 'aiop.speech' (/workspace/src/aiop/speech/__init__.py)
+2026-08-17 12:56:55 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:56:55 - aiop - INFO - Test log message
+2026-08-17 12:56:55 - aiop - ERROR - Test error message
+2026-08-17 12:56:55 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-17 12:56:56 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-0/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
+2026-08-17 12:57:42 - aiop.ui - WARNING - UI modules not available: cannot import name 'TranscriptionResult' from 'aiop.speech' (/workspace/src/aiop/speech/__init__.py)
+2026-08-17 12:57:42 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:57:42 - aiop - INFO - Test log message
+2026-08-17 12:57:42 - aiop - ERROR - Test error message
+2026-08-17 12:57:42 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-17 12:57:42 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-1/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
+2026-08-17 12:57:46 - aiop.ui - WARNING - UI modules not available: cannot import name 'TranscriptionResult' from 'aiop.speech' (/workspace/src/aiop/speech/__init__.py)
+2026-08-17 12:57:46 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:58:00 - aiop.ui - WARNING - UI modules not available: cannot import name 'TranscriptionResult' from 'aiop.speech' (/workspace/src/aiop/speech/__init__.py)
+2026-08-17 12:58:00 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:58:00 - aiop - INFO - Test log message
+2026-08-17 12:58:00 - aiop - ERROR - Test error message
+2026-08-17 12:58:00 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-17 12:58:00 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-2/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
+2026-08-17 12:58:05 - aiop.ui - WARNING - UI modules not available: cannot import name 'TranscriptionResult' from 'aiop.speech' (/workspace/src/aiop/speech/__init__.py)
+2026-08-17 12:58:05 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:58:16 - aiop.ui - WARNING - UI modules not available: cannot import name 'get_clipboard' from 'aiop.windows' (/workspace/src/aiop/windows/__init__.py)
+2026-08-17 12:58:16 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:58:17 - aiop - INFO - Test log message
+2026-08-17 12:58:17 - aiop - ERROR - Test error message
+2026-08-17 12:58:17 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-17 12:58:17 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 12:58:18 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 12:58:18 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 12:58:18 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 12:58:20 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 12:58:20 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 12:58:20 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 12:58:22 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 12:58:22 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 12:58:22 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-3/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
+2026-08-17 12:58:26 - aiop.ui - WARNING - UI modules not available: cannot import name 'get_clipboard' from 'aiop.windows' (/workspace/src/aiop/windows/__init__.py)
+2026-08-17 12:58:26 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:58:26 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 12:58:28 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 12:58:28 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 12:58:32 - aiop.ui - WARNING - UI modules not available: cannot import name 'get_clipboard' from 'aiop.windows' (/workspace/src/aiop/windows/__init__.py)
+2026-08-17 12:58:32 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:58:32 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 12:58:34 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 12:58:34 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 12:58:49 - aiop.ui - WARNING - UI modules not available: cannot import name 'get_clipboard' from 'aiop.windows' (/workspace/src/aiop/windows/__init__.py)
+2026-08-17 12:58:49 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 12:58:50 - aiop - INFO - Test log message
+2026-08-17 12:58:50 - aiop - ERROR - Test error message
+2026-08-17 12:58:50 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-17 12:58:50 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 12:58:52 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 12:58:52 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 12:58:52 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 12:58:54 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 12:58:54 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 12:58:54 - aiop - INFO - Transcription started
+2026-08-17 12:58:54 - aiop - INFO - Transcription stopped
+2026-08-17 12:58:54 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 12:58:55 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 12:58:55 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 12:58:55 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-4/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
+2026-08-17 13:04:05 - aiop.ui - WARNING - UI modules not available: cannot import name 'get_clipboard' from 'aiop.windows' (/workspace/src/aiop/windows/__init__.py)
+2026-08-17 13:04:05 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:04:34 - aiop.ui - WARNING - UI modules not available: cannot import name 'get_clipboard' from 'aiop.windows' (/workspace/src/aiop/windows/__init__.py)
+2026-08-17 13:04:34 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:04:37 - aiop.ui - WARNING - UI modules not available: cannot import name 'get_clipboard' from 'aiop.windows' (/workspace/src/aiop/windows/__init__.py)
+2026-08-17 13:04:37 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:04:37 - aiop - INFO - Test log message
+2026-08-17 13:04:37 - aiop - ERROR - Test error message
+2026-08-17 13:04:38 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-17 13:04:38 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 13:04:39 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 13:04:39 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 13:04:39 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 13:04:41 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 13:04:41 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 13:04:41 - aiop - INFO - Transcription started
+2026-08-17 13:04:41 - aiop - INFO - Transcription stopped
+2026-08-17 13:04:41 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-17 13:04:43 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-17 13:04:43 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-17 13:04:43 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-5/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
