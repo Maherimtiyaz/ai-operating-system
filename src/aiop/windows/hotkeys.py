@@ -31,6 +31,18 @@ class HotkeyManager:
     """Global hotkey manager"""
     
     def __init__(self):
+        # Check if running on Windows
+        import sys
+        if sys.platform != 'win32':
+            logger.warning("Hotkey features are only available on Windows")
+            self.user32 = None
+            self.hotkeys: Dict[int, Hotkey] = {}
+            self.next_id = 1
+            self._window_class = "AIOPHotkeyWindow"
+            self._window_proc = None
+            self._hwnd = None
+            return
+        
         self.user32 = ctypes.WinDLL('user32', use_last_error=True)
         self.hotkeys: Dict[int, Hotkey] = {}
         self.next_id = 1
