@@ -77,7 +77,7 @@ class DictationOverlay(QWidget):
         )
         self._transcription_edit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._transcription_edit.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._transcription_edit.setWordWrapMode(QTextEdit.WordWrapMode.WordWrap)
+        self._transcription_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         layout.addWidget(self._transcription_edit)
         
         # Footer

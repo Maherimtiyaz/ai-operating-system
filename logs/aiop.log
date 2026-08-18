@@ -185,3 +185,187 @@
 2026-08-17 13:08:42 - aiop - INFO - Config directory: /root/.config/aiop/config
 2026-08-17 13:08:42 - aiop - INFO - Log directory: /root/.config/aiop/logs
 2026-08-17 13:08:42 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory.
+2026-08-17 13:23:34 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:23:34 - aiop - INFO - whispercpp Python package is available
+2026-08-17 13:23:38 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:23:38 - aiop - INFO - AI Operating Platform starting...
+2026-08-17 13:23:38 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-17 13:23:38 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-17 13:23:38 - aiop - INFO - whispercpp Python package is available
+2026-08-17 13:23:42 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:23:42 - aiop - INFO - AI Operating Platform starting...
+2026-08-17 13:23:42 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-17 13:23:42 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-17 13:23:42 - aiop - INFO - whispercpp Python package is available
+2026-08-17 13:23:46 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:23:46 - aiop - INFO - AI Operating Platform starting...
+2026-08-17 13:23:46 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-17 13:23:46 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-17 13:23:46 - aiop - INFO - whispercpp Python package is available
+2026-08-17 13:23:46 - aiop - INFO - Downloading model: base.en (142.00 MB)
+2026-08-17 13:23:49 - aiop - ERROR - Checksum verification failed for base.en
+2026-08-17 13:23:49 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: base.en
+2026-08-17 13:23:49 - aiop - ERROR - Application error: type object 'QTextEdit' has no attribute 'WordWrapMode'
+2026-08-17 13:24:13 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:24:13 - aiop - INFO - AI Operating Platform starting...
+2026-08-17 13:24:13 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-17 13:24:13 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-17 13:24:14 - aiop - INFO - whispercpp Python package is available
+2026-08-17 13:24:14 - aiop - INFO - Downloading model: base.en (142.00 MB)
+2026-08-17 13:24:16 - aiop - ERROR - Checksum verification failed for base.en
+2026-08-17 13:24:16 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: base.en
+2026-08-17 13:24:16 - aiop - ERROR - Application error: module 'ctypes' has no attribute 'WinDLL'
+2026-08-17 13:24:45 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-17 13:24:45 - aiop - INFO - AI Operating Platform starting...
+2026-08-17 13:24:45 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-17 13:24:45 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-17 13:24:45 - aiop - INFO - whispercpp Python package is available
+2026-08-17 13:24:45 - aiop - INFO - Downloading model: base.en (142.00 MB)
+2026-08-17 13:24:48 - aiop - ERROR - Checksum verification failed for base.en
+2026-08-17 13:24:48 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: base.en
+2026-08-17 13:24:48 - aiop - WARNING - Clipboard features are only available on Windows
+2026-08-17 13:24:48 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:48 - aiop - INFO - Downloading model: base.en (142.00 MB)
+2026-08-17 13:24:51 - aiop - ERROR - Checksum verification failed for base.en
+2026-08-17 13:24:51 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: base.en
+2026-08-17 13:24:51 - aiop - ERROR - Failed to register hotkeys: module 'ctypes' has no attribute 'WinDLL'
+2026-08-17 13:24:51 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:52 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:53 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:54 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:55 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:56 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:57 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:58 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:24:59 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:00 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:01 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:02 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:03 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:04 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:05 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:06 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:07 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:08 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:09 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:10 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:11 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:12 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:13 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:14 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:15 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:16 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:17 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:18 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:19 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:20 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:21 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:22 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:23 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:24 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:25 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:26 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:27 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:28 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:29 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:30 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:31 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:32 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:33 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:34 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:35 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:36 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:37 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:38 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:39 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:40 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:41 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:42 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:43 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:44 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:45 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:46 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:47 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:48 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:49 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:50 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:51 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:52 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:53 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:54 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:55 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:56 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:57 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:58 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:25:59 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:00 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:01 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:02 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:03 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:04 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:05 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:06 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:07 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:08 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:09 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:10 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:11 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:12 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:13 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:14 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:15 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:16 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:17 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:18 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:19 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:20 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:21 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:22 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:23 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:24 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:25 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:26 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:27 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:28 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:29 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:30 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:31 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:32 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:33 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:34 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:35 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:36 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:37 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:38 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:39 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:40 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:41 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:42 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:43 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:44 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:45 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-17 13:26:46 - aiop - ERROR - Failed to get clipboard text: 'NoneType' object has no attribute 'OpenClipboard'
+2026-08-18 11:46:38 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 11:46:48 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 11:47:06 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 11:47:08 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 11:47:08 - aiop - INFO - AI Operating Platform starting...
+2026-08-18 11:47:08 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-18 11:47:08 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-18 11:47:08 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory.
+2026-08-18 11:47:15 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 11:47:15 - aiop - INFO - AI Operating Platform starting...
+2026-08-18 11:47:15 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-18 11:47:15 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-18 11:47:15 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory.
+2026-08-18 11:47:18 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 11:47:18 - aiop - INFO - AI Operating Platform starting...
+2026-08-18 11:47:18 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-18 11:47:18 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-18 11:47:18 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory.
+2026-08-18 11:47:18 - aiop - INFO - Downloading model: base.en (142.00 MB)
+2026-08-18 11:47:21 - aiop - ERROR - Checksum verification failed for base.en
+2026-08-18 11:47:21 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: base.en
+2026-08-18 11:47:21 - aiop - WARNING - Clipboard features are only available on Windows
+2026-08-18 11:47:21 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 11:47:21 - aiop - INFO - Downloading model: base.en (142.00 MB)
