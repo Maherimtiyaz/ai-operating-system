@@ -1,0 +1,45 @@
+# AI Operating Platform (AIOP) Requirements
+# Core dependencies for AIOP - Next-Generation Windows AI Productivity Suite
+
+# GUI Framework
+PyQt6>=6.6.0
+PyQt6-Qt6>=6.6.0
+PyQt6-sip>=13.6.0
+
+# Audio Processing
+pyaudio>=0.2.14
+webrtcvad>=2.0.10
+
+# Scientific Computing
+numpy>=1.26.0
+
+# Configuration & Data
+pyyaml>=6.0.1
+
+# Networking
+requests>=2.31.0
+websockets>=12.0
+
+# System Monitoring
+psutil>=5.9.8
+
+# Windows-specific (only installed on Windows)
+# pywin32>=306; platform_system == "Windows"
+
+# Build & Packaging
+setuptools>=69.0.0
+
+# Optional: Speech Recognition (cross-platform alternative to whisper.cpp)
+# whispercpp>=1.0.0  # Uncomment for full speech transcription support
+
+# Development dependencies (optional, for developers)
+# ruff>=0.3.0
+# black>=24.0.0
+# mypy>=1.8.0
+# pytest>=8.0.0
+# pytest-qt>=4.4.0
+# pytest-asyncio>=0.23.0
+# pytest-cov>=4.1.0
+# pre-commit>=3.6.0
+# mkdocs>=1.5.0
+# mkdocs-material>=9.5.0
