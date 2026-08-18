@@ -513,3 +513,61 @@
 2026-08-18 12:03:16 - aiop - INFO - AIOP v0.1.0 initializing...
 2026-08-18 12:03:16 - aiop - INFO - Using Python whispercpp package
 2026-08-18 12:03:16 - aiop - INFO - Using Python whispercpp package - no native library needed
+2026-08-18 13:15:46 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-18 13:15:46 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 13:15:56 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-18 13:15:56 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 13:15:59 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-18 13:15:59 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 13:16:15 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 13:16:18 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 13:16:18 - aiop - INFO - AI Operating Platform starting...
+2026-08-18 13:16:18 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-18 13:16:18 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-18 13:16:18 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-18 13:16:18 - aiop - WARNING - Failed to load whisper model: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-18 13:16:18 - aiop - WARNING - Clipboard features are only available on Windows
+2026-08-18 13:16:18 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:18 - aiop - WARNING - Failed to load whisper model: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-18 13:16:18 - aiop - WARNING - Hotkey features are only available on Windows
+2026-08-18 13:16:18 - aiop - ERROR - Failed to register hotkeys: 'NoneType' object has no attribute 'RegisterHotKey'
+2026-08-18 13:16:19 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:20 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:21 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:22 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:23 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:24 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:25 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:26 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:27 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:28 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:29 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:30 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:31 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:32 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:33 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:34 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:35 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:36 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:37 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:38 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:52 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-18 13:16:52 - aiop - INFO - AI Operating Platform starting...
+2026-08-18 13:16:52 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-18 13:16:52 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-18 13:16:52 - aiop - INFO - whispercpp Python package is available
+2026-08-18 13:16:52 - aiop - INFO - Using Python whispercpp package
+2026-08-18 13:16:52 - aiop - INFO - Using Python whispercpp package - no native library needed
+2026-08-18 13:16:52 - aiop - WARNING - Clipboard features are only available on Windows
+2026-08-18 13:16:52 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:52 - aiop - WARNING - Hotkey features are only available on Windows
+2026-08-18 13:16:52 - aiop - ERROR - Failed to register hotkeys: 'NoneType' object has no attribute 'RegisterHotKey'
+2026-08-18 13:16:53 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:54 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:55 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:56 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:57 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:58 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:16:59 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:17:00 - aiop - WARNING - Clipboard not available on this platform
+2026-08-18 13:17:01 - aiop - WARNING - Clipboard not available on this platform
