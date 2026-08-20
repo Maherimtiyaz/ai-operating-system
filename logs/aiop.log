@@ -369,3 +369,147 @@
 2026-08-18 11:47:21 - aiop - WARNING - Clipboard features are only available on Windows
 2026-08-18 11:47:21 - aiop - WARNING - Clipboard not available on this platform
 2026-08-18 11:47:21 - aiop - INFO - Downloading model: base.en (142.00 MB)
+2026-08-20 13:10:46 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-20 13:10:46 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-20 13:10:46 - aiop - INFO - Test log message
+2026-08-20 13:10:46 - aiop - ERROR - Test error message
+2026-08-20 13:10:46 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-20 13:10:46 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-20 13:10:48 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-20 13:10:48 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-20 13:10:48 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-20 13:10:49 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-20 13:10:49 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-20 13:10:49 - aiop - INFO - Transcription started
+2026-08-20 13:10:49 - aiop - INFO - Transcription stopped
+2026-08-20 13:10:49 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-20 13:10:51 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-20 13:10:51 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-20 13:10:51 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-0/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
+2026-08-20 13:11:11 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-20 13:11:12 - aiop - INFO - Test log message
+2026-08-20 13:11:12 - aiop - ERROR - Test error message
+2026-08-20 13:11:12 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-20 13:11:12 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-20 13:11:14 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-20 13:11:14 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-20 13:11:14 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-20 13:11:15 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-20 13:11:15 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-20 13:11:15 - aiop - INFO - Transcription started
+2026-08-20 13:11:15 - aiop - INFO - Transcription stopped
+2026-08-20 13:11:15 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-20 13:11:17 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-20 13:11:17 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-20 13:11:17 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-1/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
+2026-08-20 13:11:20 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-20 13:11:20 - aiop - INFO - AI Operating Platform starting...
+2026-08-20 13:11:20 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-20 13:11:20 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-20 13:11:20 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-20 13:11:24 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-20 13:11:24 - aiop - INFO - AI Operating Platform starting...
+2026-08-20 13:11:24 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-20 13:11:24 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-20 13:11:24 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-20 13:11:24 - aiop - WARNING - Failed to load whisper model: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-20 13:11:24 - aiop - WARNING - Clipboard features are only available on Windows
+2026-08-20 13:11:24 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:24 - aiop - WARNING - Failed to load whisper model: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-20 13:11:24 - aiop - WARNING - Hotkey features are only available on Windows
+2026-08-20 13:11:24 - aiop - ERROR - Failed to register hotkeys: 'NoneType' object has no attribute 'RegisterHotKey'
+2026-08-20 13:11:25 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:26 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:27 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:28 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:29 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:30 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:31 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:32 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:33 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:34 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:35 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:36 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:37 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:38 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:39 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:40 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:41 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:42 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:43 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:44 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:45 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:46 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:47 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:48 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:49 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:50 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:51 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:52 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:53 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:54 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:55 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:56 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:57 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:58 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:11:59 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:00 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:01 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:02 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:03 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:04 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:05 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:06 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:07 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:08 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:09 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:10 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:11 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:12 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:13 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:14 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:15 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:16 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:17 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:18 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:19 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:20 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:21 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:22 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:23 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:24 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:25 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:26 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:27 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:28 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:29 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:30 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:31 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:32 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:33 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:34 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:35 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:36 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:37 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:38 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:39 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:40 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:41 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:42 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:43 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:44 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:45 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:46 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:47 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:48 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:49 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:50 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:51 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:52 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:53 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:54 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:55 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:56 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:12:57 - aiop - WARNING - Clipboard not available on this platform
