@@ -513,3 +513,127 @@
 2026-08-20 13:12:55 - aiop - WARNING - Clipboard not available on this platform
 2026-08-20 13:12:56 - aiop - WARNING - Clipboard not available on this platform
 2026-08-20 13:12:57 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:22 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-20 13:18:22 - aiop - INFO - AI Operating Platform starting...
+2026-08-20 13:18:22 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-20 13:18:22 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-20 13:18:22 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-20 13:18:28 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-20 13:18:28 - aiop - INFO - AI Operating Platform starting...
+2026-08-20 13:18:28 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-20 13:18:28 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-20 13:18:28 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-20 13:18:28 - aiop - WARNING - Failed to load whisper model: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-20 13:18:28 - aiop - WARNING - Clipboard features are only available on Windows
+2026-08-20 13:18:28 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:28 - aiop - WARNING - Failed to load whisper model: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-20 13:18:28 - aiop - WARNING - Hotkey features are only available on Windows
+2026-08-20 13:18:28 - aiop - ERROR - Failed to register hotkeys: 'NoneType' object has no attribute 'RegisterHotKey'
+2026-08-20 13:18:29 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:30 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:31 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:32 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:33 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:34 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:35 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:36 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:37 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:38 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:39 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:40 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:41 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:42 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:43 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:44 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:45 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:46 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:47 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:48 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:49 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:50 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:51 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:52 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:53 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:54 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:55 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:56 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:57 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:58 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:18:59 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:00 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:01 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:02 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:03 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:04 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:05 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:06 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:07 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:08 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:09 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:10 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:11 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:12 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:13 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:14 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:15 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:16 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:17 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:18 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:19 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:20 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:21 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:22 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:23 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:24 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:25 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:26 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:27 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:28 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:29 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:30 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:31 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:32 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:33 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:34 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:35 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:36 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:37 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:38 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:39 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:40 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:41 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:42 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:43 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:44 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:45 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:46 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:47 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:48 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:49 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:50 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:51 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:52 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:53 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:54 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:55 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:56 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:57 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:19:58 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:20:11 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-20 13:20:11 - aiop - INFO - AI Operating Platform starting...
+2026-08-20 13:20:11 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-20 13:20:11 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-20 13:20:11 - aiop - INFO - whispercpp Python package is available
+2026-08-20 13:20:19 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-20 13:20:19 - aiop - INFO - AI Operating Platform starting...
+2026-08-20 13:20:19 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-20 13:20:19 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-20 13:20:19 - aiop - INFO - whispercpp Python package is available
+2026-08-20 13:20:19 - aiop - INFO - Using Python whispercpp package
+2026-08-20 13:20:19 - aiop - INFO - Using Python whispercpp package - no native library needed
+2026-08-20 13:20:19 - aiop - WARNING - Clipboard features are only available on Windows
+2026-08-20 13:20:19 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:20:19 - aiop - WARNING - Hotkey features are only available on Windows
+2026-08-20 13:20:19 - aiop - ERROR - Failed to register hotkeys: 'NoneType' object has no attribute 'RegisterHotKey'
+2026-08-20 13:20:20 - aiop - WARNING - Clipboard not available on this platform
+2026-08-20 13:20:21 - aiop - WARNING - Clipboard not available on this platform
