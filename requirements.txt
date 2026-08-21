@@ -1,45 +1,126 @@
-# AI Operating Platform (AIOP) Requirements
-# Core dependencies for AIOP - Next-Generation Windows AI Productivity Suite
+# =============================================================================
+# AI Operating Platform (AIOP) - Requirements
+# =============================================================================
+# Next-Generation Cross-Platform AI Productivity Suite
+# Python Version: 3.10+
+# =============================================================================
 
-# GUI Framework
+# -----------------------------------------------------------------------------
+# Core GUI Framework
+# -----------------------------------------------------------------------------
 PyQt6>=6.6.0
 PyQt6-Qt6>=6.6.0
 PyQt6-sip>=13.6.0
 
-# Audio Processing
+# -----------------------------------------------------------------------------
+# Audio Processing & Voice Input
+# -----------------------------------------------------------------------------
 pyaudio>=0.2.14
 webrtcvad>=2.0.10
+sounddevice>=0.4.6
+soundfile>=0.12.1
 
-# Scientific Computing
+# -----------------------------------------------------------------------------
+# Scientific Computing & Data Processing
+# -----------------------------------------------------------------------------
 numpy>=1.26.0
+scipy>=1.12.0
 
-# Configuration & Data
+# -----------------------------------------------------------------------------
+# Configuration & Data Serialization
+# -----------------------------------------------------------------------------
 pyyaml>=6.0.1
+toml>=0.10.2
 
-# Networking
+# -----------------------------------------------------------------------------
+# Networking & API Communication
+# -----------------------------------------------------------------------------
 requests>=2.31.0
 websockets>=12.0
+aiohttp>=3.9.0
 
-# System Monitoring
+# -----------------------------------------------------------------------------
+# System Monitoring & Utilities
+# -----------------------------------------------------------------------------
 psutil>=5.9.8
+platformdirs>=4.2.0
 
-# Windows-specific (only installed on Windows)
-# pywin32>=306; platform_system == "Windows"
+# -----------------------------------------------------------------------------
+# Logging & Debugging
+# -----------------------------------------------------------------------------
+colorama>=0.4.6
 
+# -----------------------------------------------------------------------------
+# AI & Machine Learning (Optional but Recommended)
+# -----------------------------------------------------------------------------
+# Whisper CPP for cross-platform speech recognition
+whispercpp>=1.0.0
+
+# -----------------------------------------------------------------------------
+# Windows-Specific Dependencies (Auto-installed on Windows)
+# -----------------------------------------------------------------------------
+pywin32>=306; platform_system == "Windows"
+comtypes>=1.2.0; platform_system == "Windows"
+
+# -----------------------------------------------------------------------------
+# Linux-Specific Dependencies (Auto-installed on Linux)
+# -----------------------------------------------------------------------------
+python-xlib>=0.33; platform_system == "Linux"
+evdev>=1.7.0; platform_system == "Linux"
+
+# -----------------------------------------------------------------------------
+# macOS-Specific Dependencies (Auto-installed on macOS)
+# -----------------------------------------------------------------------------
+pyobjc-framework-Cocoa>=10.1; platform_system == "Darwin"
+pyobjc-framework-Quartz>=10.1; platform_system == "Darwin"
+
+# -----------------------------------------------------------------------------
 # Build & Packaging
+# -----------------------------------------------------------------------------
 setuptools>=69.0.0
+wheel>=0.42.0
 
-# Optional: Speech Recognition (cross-platform alternative to whisper.cpp)
-# whispercpp>=1.0.0  # Uncomment for full speech transcription support
+# -----------------------------------------------------------------------------
+# Development Dependencies (Install with: pip install -r requirements-dev.txt)
+# -----------------------------------------------------------------------------
+# Code Quality
+ruff>=0.3.0
+black>=24.0.0
+isort>=5.13.0
+mypy>=1.8.0
 
-# Development dependencies (optional, for developers)
-# ruff>=0.3.0
-# black>=24.0.0
-# mypy>=1.8.0
-# pytest>=8.0.0
-# pytest-qt>=4.4.0
-# pytest-asyncio>=0.23.0
-# pytest-cov>=4.1.0
-# pre-commit>=3.6.0
-# mkdocs>=1.5.0
-# mkdocs-material>=9.5.0
+# Testing
+pytest>=8.0.0
+pytest-qt>=4.4.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0
+
+# Development Tools
+pre-commit>=3.6.0
+build>=1.0.0
+twine>=5.0.0
+
+# Documentation
+mkdocs>=1.5.0
+mkdocs-material>=9.5.0
+mkdocstrings>=0.24.0
+mkdocstrings-python>=1.8.0
+
+# -----------------------------------------------------------------------------
+# Installation Instructions:
+# -----------------------------------------------------------------------------
+# Basic Installation:
+#   pip install -r requirements.txt
+#
+# Full Installation (including optional AI features):
+#   pip install -r requirements.txt
+#   pip install whispercpp
+#
+# Development Installation:
+#   pip install -r requirements.txt
+#   pip install -r requirements-dev.txt
+#
+# Or install all at once:
+#   pip install -e ".[dev]"
+# -----------------------------------------------------------------------------
