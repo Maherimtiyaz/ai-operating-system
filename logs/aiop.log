@@ -637,3 +637,21 @@
 2026-08-20 13:20:19 - aiop - ERROR - Failed to register hotkeys: 'NoneType' object has no attribute 'RegisterHotKey'
 2026-08-20 13:20:20 - aiop - WARNING - Clipboard not available on this platform
 2026-08-20 13:20:21 - aiop - WARNING - Clipboard not available on this platform
+2026-08-21 13:07:17 - aiop.ui - WARNING - UI modules not available: libEGL.so.1: cannot open shared object file: No such file or directory
+2026-08-21 13:07:17 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-21 13:07:18 - aiop - INFO - Test log message
+2026-08-21 13:07:18 - aiop - ERROR - Test error message
+2026-08-21 13:07:18 - aiop - ERROR - Error in VAD: 'bytes' object has no attribute 'format'
+2026-08-21 13:07:18 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-21 13:07:19 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-21 13:07:19 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-21 13:07:19 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-21 13:07:21 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-21 13:07:21 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-21 13:07:21 - aiop - INFO - Transcription started
+2026-08-21 13:07:21 - aiop - INFO - Transcription stopped
+2026-08-21 13:07:21 - aiop - INFO - Downloading model: tiny (75.00 MB)
+2026-08-21 13:07:23 - aiop - ERROR - Checksum verification failed for tiny
+2026-08-21 13:07:23 - aiop - WARNING - Failed to load whisper model: Model not found and failed to download: tiny
+2026-08-21 13:07:23 - aiop - ERROR - Failed to load config: mapping values are not allowed here
+  in "/tmp/pytest-of-root/pytest-0/test_invalid_config_recovery0/config/config.yaml", line 1, column 14
