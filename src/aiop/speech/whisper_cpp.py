@@ -75,7 +75,15 @@ class WhisperCPP:
     
     def _find_library(self) -> str:
         """Find whisper.cpp library"""
-        # Try common locations
+        # First, try to use the Python whispercpp package if available
+        try:
+            import whispercpp
+            logger.info("Using Python whispercpp package")
+            return "python_package"  # Special marker to indicate using Python package
+        except ImportError:
+            pass
+        
+        # Try common locations for native library
         possible_paths = [
             "whisper.dll",
             "whisper.cpp/whisper.dll",
@@ -96,11 +104,18 @@ class WhisperCPP:
         
         raise exceptions.SpeechError(
             "whisper.cpp library not found. Please download from "
-            "https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory."
+            "https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, "
+            "or install the Python package: pip install whispercpp"
         )
     
     def _load_library(self) -> None:
         """Load whisper.cpp library"""
+        # If using Python whispercpp package, no need to load native library
+        if self.library_path == "python_package":
+            logger.info("Using Python whispercpp package - no native library needed")
+            self._is_loaded = True
+            return
+        
         if not Path(self.library_path).exists():
             raise exceptions.SpeechError(f"Whisper library not found: {self.library_path}")
         

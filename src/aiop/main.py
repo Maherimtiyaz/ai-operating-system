@@ -38,7 +38,7 @@ def check_dependencies() -> bool:
         "pyaudio",
         "webrtcvad",
         "numpy",
-        "pyyaml",
+        "yaml",  # PyYAML package
     ]
     
     missing = []
@@ -57,9 +57,17 @@ def check_dependencies() -> bool:
 
 def check_whisper_library() -> bool:
     """Check if whisper.cpp library is available"""
-    from .speech.whisper_cpp import WhisperCPP
-    
     try:
+        # Try the Python whispercpp package first (easier to install)
+        import whispercpp
+        logger.info("whispercpp Python package is available")
+        return True
+    except ImportError:
+        pass
+    
+    # Fall back to checking for the C++ library
+    try:
+        from .speech.whisper_cpp import WhisperCPP
         whisper = WhisperCPP()
         return True
     except Exception as e:
@@ -80,9 +88,11 @@ def main() -> int:
     
     # Check whisper library
     if not check_whisper_library():
-        print("Warning: whisper.cpp library not found.")
-        print("Please download from https://github.com/ggerganov/whisper.cpp")
-        print("and place whisper.dll in the models directory.")
+        print("Note: whisper.cpp library not found.")
+        print("Speech transcription features will be limited.")
+        print("To enable full speech features, install whispercpp:")
+        print("  pip install whispercpp")
+        print("Or download whisper.cpp from https://github.com/ggerganov/whisper.cpp")
     
     # Run application
     try:

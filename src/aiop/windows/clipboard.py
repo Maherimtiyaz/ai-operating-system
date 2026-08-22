@@ -25,6 +25,14 @@ class Clipboard:
     """Windows clipboard manager"""
     
     def __init__(self):
+        # Check if running on Windows
+        import sys
+        if sys.platform != 'win32':
+            logger.warning("Clipboard features are only available on Windows")
+            self.user32 = None
+            self.kernel32 = None
+            return
+        
         self.user32 = ctypes.WinDLL('user32', use_last_error=True)
         self.kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
         
@@ -67,6 +75,10 @@ class Clipboard:
     
     def get_text(self) -> Optional[str]:
         """Get clipboard text (Unicode)"""
+        if not self.user32:
+            logger.warning("Clipboard not available on this platform")
+            return None
+        
         try:
             self.user32.OpenClipboard(None)
             try:
@@ -95,6 +107,10 @@ class Clipboard:
     
     def set_text(self, text: str) -> bool:
         """Set clipboard text (Unicode)"""
+        if not self.user32:
+            logger.warning("Clipboard not available on this platform")
+            return False
+        
         try:
             # Allocate global memory
             text_unicode = text.encode('utf-16le')
@@ -192,6 +208,9 @@ class Clipboard:
         """Get the number of files in HDROP"""
         try:
             # Use DragQueryFile to get file count
+            import sys
+            if sys.platform != 'win32':
+                return 0
             shell32 = ctypes.WinDLL('shell32', use_last_error=True)
             shell32.DragQueryFileW.argtypes = [
                 ctypes.wintypes.HDROP,
@@ -208,6 +227,9 @@ class Clipboard:
     def _get_hdrop_file_path(self, hdrop: ctypes.c_void_p, index: int) -> Optional[str]:
         """Get a file path from HDROP by index"""
         try:
+            import sys
+            if sys.platform != 'win32':
+                return None
             shell32 = ctypes.WinDLL('shell32', use_last_error=True)
             shell32.DragQueryFileW.argtypes = [
                 ctypes.wintypes.HDROP,
