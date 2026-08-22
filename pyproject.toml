@@ -1,14 +1,15 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=69.0.0", "wheel>=0.38.0"]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry]
+[project]
 name = "aiop"
 version = "0.1.0"
 description = "AI Operating Platform - Next-Generation Windows AI Productivity Suite"
 readme = "README.md"
-authors = ["Mahi Maher <mahi@example.com>"]
-license = "Apache-2.0"
+authors = [{name = "Mahi Maher", email = "mahi@example.com"}]
+license = {text = "Apache-2.0"}
+requires-python = ">=3.11, <3.13"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -24,34 +25,36 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.11 || ^3.12"
-PyQt6 = "^6.6.0"
-PyQt6-Qt6 = "^6.6.0"
-PyQt6-sip = "^13.6.0"
-pyaudio = "^0.2.14"
-webrtcvad = "^2.0.10"
-numpy = "^1.26.0"
-pyyaml = "^6.0.1"
-requests = "^2.31.0"
-websockets = "^12.0"
-psutil = "^5.9.8"
-pywin32 = { version = "^306", platform = "win32" }
-setuptools = "^69.0.0"
+dependencies = [
+    "PyQt6>=6.6.0,<7.0.0",
+    "PyQt6-Qt6>=6.6.0,<7.0.0",
+    "PyQt6-sip>=13.6.0,<14.0.0",
+    "pyaudio>=0.2.14,<0.3.0",
+    "webrtcvad>=2.0.10,<3.0.0",
+    "numpy>=1.26.0,<2.0.0",
+    "pyyaml>=6.0.1,<7.0.0",
+    "requests>=2.31.0,<3.0.0",
+    "websockets>=12.0,<13.0",
+    "psutil>=5.9.8,<6.0.0",
+    "pywin32>=306,<307; sys_platform == 'win32'",
+    "setuptools>=69.0.0,<70.0.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.3.0"
-black = "^24.0.0"
-mypy = "^1.8.0"
-pytest = "^8.0.0"
-pytest-qt = "^4.4.0"
-pytest-asyncio = "^0.23.0"
-pytest-cov = "^4.1.0"
-pre-commit = "^3.6.0"
-mkdocs = "^1.5.0"
-mkdocs-material = "^9.5.0"
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.3.0",
+    "black>=24.0.0",
+    "mypy>=1.8.0",
+    "pytest>=8.0.0",
+    "pytest-qt>=4.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pre-commit>=3.6.0",
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+]
 
-[tool.poetry.scripts]
+[project.scripts]
 aiop = "aiop.main:main"
 
 [tool.ruff]
