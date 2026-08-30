@@ -690,3 +690,125 @@
 2026-08-22 12:01:19 - aiop - WARNING - Clipboard not available on this platform
 2026-08-22 12:01:20 - aiop - WARNING - Clipboard not available on this platform
 2026-08-22 12:01:21 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:47:45 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-30 07:47:56 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-30 07:47:59 - aiop - INFO - AIOP v0.1.0 initializing...
+2026-08-30 07:47:59 - aiop - INFO - AI Operating Platform starting...
+2026-08-30 07:47:59 - aiop - INFO - Config directory: /root/.config/aiop/config
+2026-08-30 07:47:59 - aiop - INFO - Log directory: /root/.config/aiop/logs
+2026-08-30 07:47:59 - aiop - WARNING - whisper.cpp library not available: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-30 07:47:59 - aiop - WARNING - Failed to load whisper model: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-30 07:47:59 - aiop - WARNING - Clipboard features are only available on Windows
+2026-08-30 07:47:59 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:47:59 - aiop - WARNING - Failed to load whisper model: whisper.cpp library not found. Please download from https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, or install the Python package: pip install whispercpp
+2026-08-30 07:47:59 - aiop - WARNING - Hotkey features are only available on Windows
+2026-08-30 07:47:59 - aiop - ERROR - Failed to register hotkeys: 'NoneType' object has no attribute 'RegisterHotKey'
+2026-08-30 07:48:00 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:01 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:02 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:03 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:04 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:05 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:06 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:07 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:08 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:09 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:10 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:11 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:12 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:13 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:14 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:15 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:16 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:17 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:18 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:19 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:20 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:21 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:22 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:23 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:24 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:25 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:26 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:27 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:28 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:29 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:30 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:31 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:32 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:33 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:34 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:35 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:36 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:37 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:38 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:39 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:40 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:41 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:42 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:43 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:44 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:45 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:46 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:47 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:48 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:49 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:50 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:51 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:52 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:53 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:54 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:55 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:56 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:57 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:58 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:48:59 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:00 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:01 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:02 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:03 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:04 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:05 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:06 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:07 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:08 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:09 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:10 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:11 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:12 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:13 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:14 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:15 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:16 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:17 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:18 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:19 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:20 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:21 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:22 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:23 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:24 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:25 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:26 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:27 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:28 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:29 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:30 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:31 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:32 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:33 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:34 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:35 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:36 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:37 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:38 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:39 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:40 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:41 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:42 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:43 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:44 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:45 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:46 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:47 - aiop - WARNING - Clipboard not available on this platform
+2026-08-30 07:49:48 - aiop - WARNING - Clipboard not available on this platform
