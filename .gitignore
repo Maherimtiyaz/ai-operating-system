@@ -1,38 +1,97 @@
-```
-# Python
+# Python bytecode and caches
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.python-version
+
+# Python tooling and test output
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+*.prof
+*.lprof
 
 # Local virtual environments
 .venv/
 venv/
+env/
+ENV/
 
-# Logs
+# Logs and runtime output
 *.log
+logs/*
+*.out
+*.pid
+*.pid.lock
 
-# Local environment
+# Secrets and local environment configuration
 .env
 .env.local
 *.env.*
+!.env.example
+*.secret
+*.secrets
+secrets/
 
-# Coverage
-.coverage
-coverage/
-htmlcov/
-
-# Pytest
-.pytest_cache/
+# Local configuration overrides
+config/*.local.yaml
+config/*.local.yml
+config/*-local.yaml
+config/*-local.yml
 
 # Downloaded speech models and native runtime binaries
 models/*
+*.bin
+*.onnx
+*.safetensors
+*.gguf
+*.dll
+*.so
+*.dylib
+*.exe
 
-# Mypy
-.mypy_cache/
+# Local databases and application state
+*.db
+*.sqlite
+*.sqlite3
+instance/
+.cache/
 
-# Distribution / packaging
+# Build and distribution output
+*.egg-info/
 dist/
 build/
-*.egg-info/
-```
+wheelhouse/
+pip-wheel-metadata/
+
+# IDE and editor metadata
+.idea/
+.vscode/*
+!.vscode/settings.example.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# Keep empty runtime directories discoverable when needed
+!.gitkeep
