@@ -33,8 +33,28 @@ class ListeningButton(QPushButton):
         self._phase = 0.0
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._advance)
+        self._on_press_callbacks = []
+        self._on_release_callbacks = []
         self.setFixedSize(58, 58)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def add_press_callback(self, callback: Callable[[], None]) -> None:
+        self._on_press_callbacks.append(callback)
+
+    def add_release_callback(self, callback: Callable[[], None]) -> None:
+        self._on_release_callbacks.append(callback)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            for callback in self._on_press_callbacks:
+                callback()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            for callback in self._on_release_callbacks:
+                callback()
+        super().mouseReleaseEvent(event)
 
     def set_listening(self, listening: bool) -> None:
         self._listening = listening
@@ -107,6 +127,9 @@ class DictationOverlay(QWidget):
         self._on_transcription_callbacks = []
         self._on_state_change_callbacks = []
         self._on_toggle_callbacks = []
+        self._on_press_callbacks = []
+        self._on_release_callbacks = []
+        self._hold_to_talk = False
         self._opacity_effect = QGraphicsOpacityEffect(self._listen_button)
         self._listen_button.setGraphicsEffect(self._opacity_effect)
         self._pulse_animation = QPropertyAnimation(self._opacity_effect, b"opacity", self)
@@ -125,6 +148,8 @@ class DictationOverlay(QWidget):
         self._listen_button = ListeningButton()
         self._listen_button.setToolTip("Start listening")
         self._listen_button.clicked.connect(self._emit_toggle)
+        self._listen_button.add_press_callback(self._emit_press)
+        self._listen_button.add_release_callback(self._emit_release)
         layout.addWidget(self._listen_button)
 
         self._status_label = QLabel("Ready")
@@ -359,6 +384,22 @@ class DictationOverlay(QWidget):
         """Add callback for the listening button."""
         self._on_toggle_callbacks.append(callback)
 
+    def set_hold_to_talk(self, enabled: bool) -> None:
+        """Enable press-and-hold behavior for the floating microphone button."""
+        self._hold_to_talk = enabled
+        self._listen_button.setToolTip(
+            "Hold to talk" if enabled else "Start listening"
+        )
+
+    def is_hold_to_talk(self) -> bool:
+        return self._hold_to_talk
+
+    def add_press_callback(self, callback: Callable[[], None]) -> None:
+        self._on_press_callbacks.append(callback)
+
+    def add_release_callback(self, callback: Callable[[], None]) -> None:
+        self._on_release_callbacks.append(callback)
+
     def set_feedback(self, message: str, success: bool = True) -> None:
         """Show the latest action result without opening a foreground panel."""
         self.set_state(OverlayState.INSERTED if success else OverlayState.ERROR, message)
@@ -368,11 +409,23 @@ class DictationOverlay(QWidget):
         QTimer.singleShot(1800, lambda: self.set_listening(False))
 
     def _emit_toggle(self) -> None:
+        if self._hold_to_talk:
+            return
         for callback in self._on_toggle_callbacks:
             try:
                 callback()
             except Exception as e:
                 logger.error(f"Error in toggle callback: {e}")
+
+    def _emit_press(self) -> None:
+        if self._hold_to_talk:
+            for callback in self._on_press_callbacks:
+                callback()
+
+    def _emit_release(self) -> None:
+        if self._hold_to_talk:
+            for callback in self._on_release_callbacks:
+                callback()
     
     def on_transcription_result(self, result: TranscriptionResult) -> None:
         """Handle transcription result"""

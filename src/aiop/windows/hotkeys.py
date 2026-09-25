@@ -302,6 +302,30 @@ class HotkeyManager:
     def list_hotkeys(self) -> List[Hotkey]:
         """List all registered hotkeys"""
         return list(self.hotkeys.values())
+
+    def is_hotkey_pressed(self, hotkey_id: int) -> bool:
+        """Return whether a registered hotkey's key and modifiers are down."""
+        hotkey = self.hotkeys.get(hotkey_id)
+        if not hotkey or not self.user32:
+            return False
+
+        if not self._is_key_down(hotkey.key):
+            return False
+
+        modifier_groups = []
+        if hotkey.modifiers & ModifierKey.MOD_CONTROL.value:
+            modifier_groups.append((VirtualKey.VK_LCONTROL.value, VirtualKey.VK_RCONTROL.value))
+        if hotkey.modifiers & ModifierKey.MOD_SHIFT.value:
+            modifier_groups.append((VirtualKey.VK_LSHIFT.value, VirtualKey.VK_RSHIFT.value))
+        if hotkey.modifiers & ModifierKey.MOD_ALT.value:
+            modifier_groups.append((VirtualKey.VK_LMENU.value, VirtualKey.VK_RMENU.value))
+        if hotkey.modifiers & ModifierKey.MOD_WIN.value:
+            modifier_groups.append((VirtualKey.VK_LWIN.value, VirtualKey.VK_RWIN.value))
+
+        return all(any(self._is_key_down(key) for key in group) for group in modifier_groups)
+
+    def _is_key_down(self, key: int) -> bool:
+        return bool(self.user32.GetAsyncKeyState(key) & 0x8000)
     
     def parse_hotkey_string(self, hotkey_str: str) -> Tuple[int, int]:
         """

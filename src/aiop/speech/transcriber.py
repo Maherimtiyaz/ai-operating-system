@@ -34,6 +34,7 @@ class TranscriptionResult:
     confidence: float = 0.0
     language: Optional[str] = None
     is_final: bool = False
+    status: Optional[str] = None
     
 
 @dataclass
@@ -122,6 +123,7 @@ class SpeechTranscriber:
                     self._process_buffer()
                 else:
                     # Not enough speech, reset
+                    self._emit_status("too_short")
                     self._reset_buffer()
             
             # Check for max duration
@@ -138,11 +140,13 @@ class SpeechTranscriber:
     def _process_buffer(self) -> None:
         """Process buffered audio"""
         if not self._audio_buffer:
+            self._emit_status("no_speech")
             self._reset_buffer()
             return
 
         if not self.whisper_model:
             logger.error("Cannot transcribe: Whisper model is unavailable")
+            self._emit_status("transcription_error")
             self._reset_buffer()
             return
         
@@ -168,6 +172,7 @@ class SpeechTranscriber:
                 confidence=0.9,  # Placeholder
                 language=self.config.language,
                 is_final=True,
+                status="complete",
             )
             
             self._last_transcription = result
@@ -183,9 +188,18 @@ class SpeechTranscriber:
             
         except Exception as e:
             logger.error(f"Transcription error: {e}")
+            self._emit_status("transcription_error")
         
         finally:
             self._reset_buffer()
+
+    def _emit_status(self, status: str) -> None:
+        result = TranscriptionResult(text="", is_final=True, status=status)
+        for callback in self._callbacks:
+            try:
+                callback(result)
+            except Exception as error:
+                logger.error("Error in transcription status callback: %s", error)
 
     def _maybe_emit_partial(self) -> None:
         """Schedule a throttled preview without blocking audio capture."""
@@ -284,6 +298,7 @@ class SpeechTranscriber:
             self.state = TranscriptionState.PROCESSING
             self._process_buffer()
         else:
+            self._emit_status("no_speech")
             self._reset_buffer()
         logger.info("Transcription stopped")
     

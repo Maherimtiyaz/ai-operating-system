@@ -423,6 +423,90 @@ class TestErrorHandlingIntegration:
         assert len(results) == 1
         assert results[0].text == "draft words"
         assert results[0].is_final is False
+
+    def test_transcription_status_result_is_actionable(self):
+        """Empty final results carry a reason for user-facing feedback."""
+        from aiop.speech.transcriber import SpeechTranscriber
+
+        results = []
+        transcriber = SpeechTranscriber.__new__(SpeechTranscriber)
+        transcriber._callbacks = [results.append]
+
+        transcriber._emit_status("too_short")
+
+        assert len(results) == 1
+        assert results[0].text == ""
+        assert results[0].is_final is True
+        assert results[0].status == "too_short"
+
+    def test_action_router_reports_missing_focus(self, monkeypatch):
+        """Insertion fails clearly when no target window is available."""
+        from aiop.windows.actions import ActionRouter
+
+        win32 = Mock()
+        win32.get_foreground_window.return_value = 0
+        monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
+
+        result = ActionRouter().route("hello world")
+
+        assert result.success is False
+        assert result.message == "No focused application"
+
+    def test_action_router_reports_clipboard_failure(self, monkeypatch):
+        """Insertion reports clipboard failures without sending a paste key."""
+        from aiop.windows.actions import ActionRouter
+
+        clipboard = Mock()
+        clipboard.set_text.return_value = False
+        win32 = Mock()
+        win32.get_foreground_window.return_value = 123
+        monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
+        monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
+
+        result = ActionRouter().route("hello world")
+
+        assert result.success is False
+        assert result.message == "Could not copy dictation"
+        win32._send_key.assert_not_called()
+
+    @pytest.mark.skip(reason="Requires a desktop Qt display")
+    def test_overlay_supports_hold_to_talk(self):
+        """The microphone control can opt into press-and-hold behavior."""
+        from PyQt6.QtWidgets import QApplication
+        from aiop.ui.overlay import DictationOverlay
+
+        QApplication.instance() or QApplication(sys.argv)
+        overlay = DictationOverlay()
+        assert overlay.is_hold_to_talk() is False
+
+        overlay.set_hold_to_talk(True)
+
+        assert overlay.is_hold_to_talk() is True
+
+    def test_hotkey_pressed_requires_key_and_modifiers(self):
+        """Hold mode only remains active while the complete shortcut is down."""
+        from aiop.windows.hotkeys import Hotkey, HotkeyManager
+        from aiop.windows.win32_api import ModifierKey, VirtualKey
+
+        manager = HotkeyManager.__new__(HotkeyManager)
+        manager.user32 = Mock()
+        manager._hwnd = None
+        manager.hotkeys = {
+            1: Hotkey(
+                id=1,
+                modifiers=ModifierKey.MOD_CONTROL.value,
+                key=VirtualKey.VK_SPACE.value,
+                callback=lambda: None,
+            )
+        }
+        manager.user32.GetAsyncKeyState.side_effect = lambda key: 0x8000 if key in {
+            VirtualKey.VK_SPACE.value,
+            VirtualKey.VK_LCONTROL.value,
+        } else 0
+
+        assert manager.is_hotkey_pressed(1) is True
+        manager.user32.GetAsyncKeyState.side_effect = lambda key: 0
+        assert manager.is_hotkey_pressed(1) is False
     
     def test_invalid_config_recovery(self, tmp_path):
         """Test recovery from invalid config file"""

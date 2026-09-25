@@ -44,10 +44,15 @@ class ActionRouter:
 
         try:
             clipboard = get_clipboard()
+            win32 = get_win32_api()
+            target_window = win32.get_foreground_window()
+            if not target_window:
+                return ActionResult(True, False, "No focused application")
             if not clipboard.set_text(normalized):
                 return ActionResult(True, False, "Could not copy dictation")
 
-            win32 = get_win32_api()
+            if not win32.set_foreground_window(target_window):
+                return ActionResult(True, False, "Could not restore focused application")
             win32._send_key_down(VirtualKey.VK_CONTROL.value)
             win32._send_key(VirtualKey.VK_V.value)
             win32._send_key_up(VirtualKey.VK_CONTROL.value)

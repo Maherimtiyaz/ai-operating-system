@@ -4,7 +4,7 @@ Tray application for AIOP
 
 import sys
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon
 from typing import Optional
 from ..core import logging
@@ -38,6 +38,11 @@ class TrayApp(QObject):
         # Components
         self.window = get_main_window()
         self.overlay = get_overlay()
+        self.overlay.set_hold_to_talk(config.get_config().windows.hold_to_talk)
+        self._hold_hotkey_id = None
+        self._hold_poll_timer = QTimer(self)
+        self._hold_poll_timer.setInterval(30)
+        self._hold_poll_timer.timeout.connect(self._poll_hold_to_talk)
         self.transcriber = get_transcriber()
         self.action_router = ActionRouter()
         
@@ -47,6 +52,8 @@ class TrayApp(QObject):
         # Connect signals
         self._connect_signals()
         self.overlay.add_toggle_callback(self._on_dictation_hotkey)
+        self.overlay.add_press_callback(self._start_dictation)
+        self.overlay.add_release_callback(self._stop_dictation)
         self.transcription_ready.connect(self._on_transcription_result)
         self.transcriber.add_callback(self._queue_transcription_result)
     
@@ -60,6 +67,8 @@ class TrayApp(QObject):
         for shortcut, callback, name in hotkeys:
             try:
                 hotkey_id = hotkey_manager.register_from_string(shortcut, callback)
+                if name == "dictation" and config.get_config().windows.hold_to_talk:
+                    self._hold_hotkey_id = hotkey_id
                 logger.info("Registered %s hotkey (ID: %s)", name, hotkey_id)
             except Exception as error:
                 logger.warning("Could not register %s hotkey (%s): %s", name, shortcut, error)
@@ -71,19 +80,40 @@ class TrayApp(QObject):
     
     def _on_dictation_hotkey(self) -> None:
         """Handle dictation hotkey"""
+        if self.overlay.is_hold_to_talk():
+            self._start_dictation()
+            self._hold_poll_timer.start()
+            return
         if self.transcriber.is_running():
-            self.overlay.set_state(OverlayState.PROCESSING, "Cleaning up...")
-            self.transcriber.stop()
+            self._stop_dictation()
         else:
-            try:
-                self.transcriber.start()
-            except Exception as error:
-                logger.error("Could not start dictation: %s", error)
-                self.overlay.set_listening(False)
-                self.overlay.set_feedback("Microphone unavailable", success=False)
-                return
+            self._start_dictation()
 
-            self.overlay.set_listening(True)
+    def _poll_hold_to_talk(self) -> None:
+        if not self._hold_hotkey_id:
+            self._hold_poll_timer.stop()
+            return
+        hotkey_manager = get_hotkey_manager()
+        if not hotkey_manager.is_hotkey_pressed(self._hold_hotkey_id):
+            self._hold_poll_timer.stop()
+            self._stop_dictation()
+
+    def _start_dictation(self) -> None:
+        if self.transcriber.is_running():
+            return
+        try:
+            self.transcriber.start()
+        except Exception as error:
+            logger.error("Could not start dictation: %s", error)
+            self.overlay.set_feedback("Microphone unavailable", success=False)
+            return
+        self.overlay.set_listening(True)
+
+    def _stop_dictation(self) -> None:
+        if not self.transcriber.is_running():
+            return
+        self.overlay.set_state(OverlayState.PROCESSING, "Cleaning up...")
+        self.transcriber.stop()
     
     def _on_overlay_hotkey(self) -> None:
         """Handle overlay hotkey"""
@@ -95,6 +125,12 @@ class TrayApp(QObject):
             self.overlay.set_partial_text(result.text)
             return
         if not result.text:
+            messages = {
+                "no_speech": "No speech detected",
+                "too_short": "Keep speaking a little longer",
+                "transcription_error": "Could not transcribe audio",
+            }
+            self.overlay.set_feedback(messages.get(result.status, "No speech detected"), success=False)
             return
         self.overlay.set_state(OverlayState.PROCESSING, "Transcribing")
         self.app.processEvents()

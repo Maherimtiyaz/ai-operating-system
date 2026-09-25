@@ -77,15 +77,26 @@ Validation for Part 2 state and partial transcription work:
 33 passed, 4 skipped
 ```
 
+Part 2 interaction-quality validation:
+
+```text
+.venv/Scripts/python.exe -m pytest -q
+35 passed, 5 skipped
+```
+
 #### Part 2: Wispr-Style Interaction Quality
 
 - [x] Separate `Ready`, `Listening`, `Processing`, `Inserted`, and `Error` presentation states.
 - [x] Add a visible elapsed recording indicator.
 - [x] Add optional live partial text.
-- [ ] Add a press-and-hold mode alongside the current toggle mode.
-- [ ] Make no-speech, too-short-audio, and transcription failures understandable.
-- [ ] Preserve focus correctly while showing the overlay and pasting the result.
-- [ ] Add focused tests for state transitions and insertion failures.
+- [x] Add a press-and-hold mode alongside the current toggle mode.
+- [x] Make no-speech, too-short-audio, and transcription failures understandable.
+- [x] Preserve focus correctly while showing the overlay and pasting the result.
+- [x] Add focused tests for state transitions and insertion failures.
+
+Hold-to-talk uses the same configured `Ctrl+Shift+Space` shortcut: pressing starts
+dictation and releasing the physical shortcut stops it. The overlay microphone
+also supports press-and-hold; toggle mode remains the default for existing users.
 
 #### Part 3: Speech Cleanup
 
