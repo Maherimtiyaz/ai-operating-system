@@ -3,7 +3,9 @@ Speech transcriber for AIOP
 """
 
 import time
+import threading
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Generator, Callable, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -65,6 +67,11 @@ class SpeechTranscriber:
         self._last_transcription: Optional[TranscriptionResult] = None
         self._callbacks: List[Callable[[TranscriptionResult], None]] = []
         self._is_running = False
+        self._partial_interval = 1.0
+        self._last_partial_at = 0.0
+        self._partial_generation = 0
+        self._transcription_lock = threading.Lock()
+        self._partial_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aiop-partial")
         self._setup_components()
     
     def _setup_components(self) -> None:
@@ -101,6 +108,7 @@ class SpeechTranscriber:
         elif self.state == TranscriptionState.LISTENING:
             # Continue recording
             self._audio_buffer.append(audio_chunk.data)
+            self._maybe_emit_partial()
             
             # Check for speech end
             result = self.audio_processor.process_chunk(audio_chunk)
@@ -143,13 +151,14 @@ class SpeechTranscriber:
         
         # Transcribe
         try:
-            text = self.whisper_model.transcribe(
-                audio_data,
-                sample_rate=self.config.sample_rate,
-                language=self.config.language,
-                translate=self.config.translate,
-                temperature=self.config.temperature,
-            )
+            with self._transcription_lock:
+                text = self.whisper_model.transcribe(
+                    audio_data,
+                    sample_rate=self.config.sample_rate,
+                    language=self.config.language,
+                    translate=self.config.translate,
+                    temperature=self.config.temperature,
+                )
             
             # Create result
             result = TranscriptionResult(
@@ -177,20 +186,88 @@ class SpeechTranscriber:
         
         finally:
             self._reset_buffer()
+
+    def _maybe_emit_partial(self) -> None:
+        """Schedule a throttled preview without blocking audio capture."""
+        if not self.config.use_streaming or not self.whisper_model:
+            return
+
+        now = time.monotonic()
+        if now - self._last_partial_at < self._partial_interval:
+            return
+
+        audio_data = b"".join(self._audio_buffer)
+        duration = len(audio_data) / 2 / self.config.sample_rate
+        if duration < self._partial_interval:
+            return
+
+        self._last_partial_at = now
+        generation = self._partial_generation
+        speech_start_time = self._speech_start_time or time.time()
+        self._partial_executor.submit(
+            self._run_partial,
+            audio_data,
+            speech_start_time,
+            generation,
+        )
+
+    def _run_partial(
+        self,
+        audio_data: bytes,
+        speech_start_time: float,
+        generation: int,
+    ) -> None:
+        """Transcribe a preview and emit it only if the utterance is current."""
+        try:
+            with self._transcription_lock:
+                text = self.whisper_model.transcribe(
+                    audio_data,
+                    sample_rate=self.config.sample_rate,
+                    language=self.config.language,
+                    translate=self.config.translate,
+                    temperature=self.config.temperature,
+                )
+
+            if not text or not self._is_running or generation != self._partial_generation:
+                return
+
+            result = TranscriptionResult(
+                text=text,
+                start_time=speech_start_time,
+                end_time=time.time(),
+                confidence=0.9,
+                language=self.config.language,
+                is_final=False,
+            )
+            for callback in self._callbacks:
+                try:
+                    callback(result)
+                except Exception as error:
+                    logger.error("Error in partial transcription callback: %s", error)
+        except Exception as error:
+            logger.debug("Partial transcription unavailable: %s", error)
     
     def _reset_buffer(self) -> None:
         """Reset audio buffer"""
         self._audio_buffer = []
         self._speech_start_time = None
+        self._last_partial_at = 0.0
+        self._partial_generation += 1
         self.state = TranscriptionState.IDLE
     
     def start(self) -> None:
         """Start transcription"""
         if self._is_running:
             return
-        
+
+        try:
+            self.audio_capture.start()
+        except Exception:
+            self._is_running = False
+            self._reset_buffer()
+            raise
+
         self._is_running = True
-        self.audio_capture.start()
         logger.info("Transcription started")
     
     def stop(self) -> None:
@@ -200,7 +277,14 @@ class SpeechTranscriber:
         
         self._is_running = False
         self.audio_capture.stop()
-        self._reset_buffer()
+        if self._audio_buffer and self.state in {
+            TranscriptionState.LISTENING,
+            TranscriptionState.PROCESSING,
+        }:
+            self.state = TranscriptionState.PROCESSING
+            self._process_buffer()
+        else:
+            self._reset_buffer()
         logger.info("Transcription stopped")
     
     def pause(self) -> None:

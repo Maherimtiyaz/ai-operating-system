@@ -198,6 +198,11 @@ class AudioCapture:
             callback=self._handle_audio if self._callbacks else None,
         )
         self.stream.start()
+
+    def get_input_status(self) -> tuple[bool, str]:
+        """Return microphone readiness for onboarding and diagnostics."""
+        devices_manager = get_audio_devices()
+        return devices_manager.get_input_status()
     
     def stop(self) -> None:
         """Stop audio capture"""

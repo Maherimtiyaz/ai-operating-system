@@ -22,6 +22,25 @@ def test_audio_devices():
     assert len(input_devices) > 0 or len(output_devices) > 0
 
 
+def test_audio_input_status_reports_missing_microphone():
+    """A missing input device produces an actionable readiness message."""
+    manager = devices.AudioDevices.__new__(devices.AudioDevices)
+    manager.devices = {
+        1: devices.AudioDeviceInfo(
+            index=1,
+            name="Speakers",
+            max_input_channels=0,
+            max_output_channels=2,
+            default_sample_rate=48000.0,
+        )
+    }
+
+    ready, message = manager.get_input_status()
+
+    assert ready is False
+    assert message == "No microphone input device was found"
+
+
 def test_audio_capture():
     """Test audio capture"""
     capture_instance = capture.AudioCapture()

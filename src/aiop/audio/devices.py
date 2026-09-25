@@ -65,6 +65,17 @@ class AudioDevices:
             if device.is_default_input:
                 return device
         return None
+
+    def get_input_status(self) -> Tuple[bool, str]:
+        """Return whether a usable input device is available and why."""
+        input_devices = self.list_input_devices()
+        if not input_devices:
+            return False, "No microphone input device was found"
+
+        if self.get_default_input_device() is None:
+            return False, "No default microphone input device is available"
+
+        return True, self.get_default_input_device().name
     
     def get_default_output_device(self) -> Optional[AudioDeviceInfo]:
         """Get the default output device"""
@@ -90,7 +101,8 @@ class AudioDevices:
     
     def __del__(self):
         """Cleanup"""
-        self.pyaudio.terminate()
+        if hasattr(self, "pyaudio"):
+            self.pyaudio.terminate()
 
 
 # Global audio devices instance

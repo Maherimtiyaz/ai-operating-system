@@ -10,6 +10,7 @@ from typing import Optional
 from ..core import logging
 from .main_window import MainWindow, get_main_window
 from .overlay import get_overlay
+from .overlay import OverlayState
 from ..speech import get_transcriber
 from ..windows import register_hotkey, get_hotkey_manager
 from ..windows import ActionRouter
@@ -71,10 +72,17 @@ class TrayApp(QObject):
     def _on_dictation_hotkey(self) -> None:
         """Handle dictation hotkey"""
         if self.transcriber.is_running():
+            self.overlay.set_state(OverlayState.PROCESSING, "Cleaning up...")
             self.transcriber.stop()
-            self.overlay.set_listening(False)
         else:
-            self.transcriber.start()
+            try:
+                self.transcriber.start()
+            except Exception as error:
+                logger.error("Could not start dictation: %s", error)
+                self.overlay.set_listening(False)
+                self.overlay.set_feedback("Microphone unavailable", success=False)
+                return
+
             self.overlay.set_listening(True)
     
     def _on_overlay_hotkey(self) -> None:
@@ -83,12 +91,15 @@ class TrayApp(QObject):
 
     def _on_transcription_result(self, result) -> None:
         """Route final speech to an allowlisted action or focused app."""
-        if not result.is_final or not result.text:
+        if not result.is_final:
+            self.overlay.set_partial_text(result.text)
             return
-        self.overlay.set_state("transcribing", "Transcribing")
+        if not result.text:
+            return
+        self.overlay.set_state(OverlayState.PROCESSING, "Transcribing")
         self.app.processEvents()
         if self.action_router.FILE_MANAGER_PATTERN.search(result.text):
-            self.overlay.set_state("executing", "Opening File Manager")
+            self.overlay.set_state(OverlayState.PROCESSING, "Opening File Manager")
             self.app.processEvents()
         action_result = self.action_router.route(result.text)
         self.overlay.set_feedback(action_result.message, action_result.success)

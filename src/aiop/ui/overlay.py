@@ -6,11 +6,22 @@ import time
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit, QPushButton, QGraphicsOpacityEffect
 from PyQt6.QtCore import Qt, QTimer, QPoint, QSize, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QFont, QColor, QPalette, QTextCursor, QPainter, QPen, QBrush
+from enum import Enum
 from typing import Optional, Callable
 from ..core import logging
 from ..speech import TranscriptionResult
 
 logger = logging.get_logger(__name__)
+
+
+class OverlayState(str, Enum):
+    """User-visible states for the floating dictation control."""
+
+    READY = "ready"
+    LISTENING = "listening"
+    PROCESSING = "processing"
+    INSERTED = "inserted"
+    ERROR = "error"
 
 
 class ListeningButton(QPushButton):
@@ -82,6 +93,11 @@ class DictationOverlay(QWidget):
         
         # State
         self._is_listening = False
+        self._state = OverlayState.READY
+        self._listening_started_at = 0.0
+        self._elapsed_timer = QTimer(self)
+        self._elapsed_timer.setInterval(250)
+        self._elapsed_timer.timeout.connect(self._update_listening_elapsed)
         self._last_activity_time = 0
         self._auto_hide_timer = QTimer(self)
         self._auto_hide_timer.timeout.connect(self._on_auto_hide)
@@ -102,9 +118,9 @@ class DictationOverlay(QWidget):
     
     def _setup_ui(self) -> None:
         """Set up UI"""
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 6, 6, 6)
-        layout.setSpacing(0)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(7, 7, 12, 7)
+        layout.setSpacing(8)
         
         self._listen_button = ListeningButton()
         self._listen_button.setToolTip("Start listening")
@@ -116,6 +132,11 @@ class DictationOverlay(QWidget):
         self._status_label.setStyleSheet("color: #9aa0a6; font-size: 11px; font-weight: 600;")
         self._status_label.hide()
         layout.addWidget(self._status_label)
+        self._partial_label = QLabel()
+        self._partial_label.setWordWrap(False)
+        self._partial_label.setStyleSheet("color: #c8d0d8; font-size: 11px;")
+        self._partial_label.hide()
+        layout.addWidget(self._partial_label)
         self._hint_label = QLabel()
         self._hint_label.hide()
         self._transcription_edit = QTextEdit()
@@ -139,8 +160,8 @@ class DictationOverlay(QWidget):
         screen = self.screen()
         if screen:
             screen_geometry = screen.geometry()
-            width = 64
-            height = 64
+            width = 72
+            height = 72
             x = screen_geometry.width() - width - 20
             y = screen_geometry.height() - height - 20
             self.setGeometry(x, y, width, height)
@@ -176,49 +197,90 @@ class DictationOverlay(QWidget):
     
     def set_listening(self, listening: bool) -> None:
         """Set listening state"""
-        self._is_listening = listening
-        self._status_label.hide()
-        self._resize_control(64, 64)
-        self._listen_button.set_listening(listening)
-        
-        if listening:
-            self._status_label.setText("Listening...")
-            self._status_label.setStyleSheet("color: #40c040;")
-            self._hint_label.setText("Speak now...")
-            self._hint_label.setStyleSheet("color: #40c040;")
-        else:
-            self._status_label.setText("Ready")
-            self._status_label.setStyleSheet("color: #a0a0a0;")
-            self._hint_label.setText("Press Ctrl+Shift+Space to start")
-            self._hint_label.setStyleSheet("color: #606060;")
+        self.set_state(OverlayState.LISTENING if listening else OverlayState.READY)
 
-        self._listen_button.setToolTip("Stop listening" if listening else "Start listening")
-        self._set_button_style("#d95f59" if listening else "#30343a", "#ffffff" if listening else "#d9dde3")
-        if listening:
-            self._pulse_animation.start()
-        else:
-            self._pulse_animation.stop()
-            self._opacity_effect.setOpacity(1.0)
-        
-        # Notify callbacks
-        for callback in self._on_state_change_callbacks:
-            try:
-                callback(listening)
-            except Exception as e:
-                logger.error(f"Error in state change callback: {e}")
+    def set_state(self, state: OverlayState | str, message: str = "") -> None:
+        """Update the control presentation for a dictation lifecycle state."""
+        aliases = {
+            "transcribing": OverlayState.PROCESSING,
+            "executing": OverlayState.PROCESSING,
+            "success": OverlayState.INSERTED,
+        }
+        resolved_state = aliases.get(state, state)
+        if not isinstance(resolved_state, OverlayState):
+            resolved_state = OverlayState(resolved_state)
 
-    def set_state(self, state: str, message: str = "") -> None:
-        """Show a transient processing or execution state."""
-        self._is_listening = False
+        self._state = resolved_state
+        self._is_listening = resolved_state is OverlayState.LISTENING
+        self._status_label.setVisible(resolved_state is not OverlayState.READY)
+        if resolved_state is not OverlayState.LISTENING:
+            self._partial_label.clear()
+            self._partial_label.hide()
+        self._listen_button.set_listening(self._is_listening)
         self._pulse_animation.stop()
         self._opacity_effect.setOpacity(1.0)
-        self._status_label.setText(message or state.title())
-        color = "#5dcf8b" if state == "success" else "#e06b66" if state == "error" else "#75c7c5"
-        self._status_label.setStyleSheet(f"color: {color}; font-size: 11px; font-weight: 600;")
-        self._status_label.show()
-        self._resize_control(190, 64)
-        self._listen_button.setToolTip(message or state.title())
-        self._set_button_style("#30343a", "#75c7c5")
+
+        labels = {
+            OverlayState.LISTENING: "Listening...",
+            OverlayState.PROCESSING: "Cleaning up...",
+            OverlayState.INSERTED: "Inserted",
+            OverlayState.ERROR: "Something went wrong",
+            OverlayState.READY: "Ready",
+        }
+        colors = {
+            OverlayState.LISTENING: "#40c040",
+            OverlayState.PROCESSING: "#75c7c5",
+            OverlayState.INSERTED: "#5dcf8b",
+            OverlayState.ERROR: "#e06b66",
+            OverlayState.READY: "#a0a0a0",
+        }
+        label = message or labels[resolved_state]
+        self._status_label.setText(label)
+        self._status_label.setStyleSheet(
+            f"color: {colors[resolved_state]}; font-size: 11px; font-weight: 600;"
+        )
+        width = 420 if self._partial_label.isVisible() else 190
+        self._resize_control(width if resolved_state is not OverlayState.READY else 72, 72)
+        self._listen_button.setToolTip(label)
+        self._set_button_style(colors[resolved_state], "#ffffff")
+
+        if self._is_listening:
+            self._listening_started_at = time.monotonic()
+            self._elapsed_timer.start()
+            self._pulse_animation.start()
+        else:
+            self._elapsed_timer.stop()
+
+        for callback in self._on_state_change_callbacks:
+            try:
+                callback(self._is_listening)
+            except Exception as error:
+                logger.error("Error in state change callback: %s", error)
+
+    def get_state(self) -> OverlayState:
+        """Return the current user-visible overlay state."""
+        return self._state
+
+    @staticmethod
+    def format_elapsed(seconds: float) -> str:
+        """Format a recording duration for the compact status label."""
+        total_seconds = max(0, int(seconds))
+        minutes, remaining_seconds = divmod(total_seconds, 60)
+        return f"{minutes:02d}:{remaining_seconds:02d}"
+
+    def _update_listening_elapsed(self) -> None:
+        if self._state is OverlayState.LISTENING:
+            elapsed = time.monotonic() - self._listening_started_at
+            self._status_label.setText(f"Listening {self.format_elapsed(elapsed)}")
+
+    def set_partial_text(self, text: str) -> None:
+        """Show the latest non-final transcription preview while listening."""
+        if self._state is not OverlayState.LISTENING or not text.strip():
+            return
+        self._partial_label.setText(text.strip())
+        self._partial_label.setToolTip(text.strip())
+        self._partial_label.show()
+        self._resize_control(420, 72)
 
     def _resize_control(self, width: int, height: int) -> None:
         self.setFixedSize(width, height)
@@ -299,7 +361,7 @@ class DictationOverlay(QWidget):
 
     def set_feedback(self, message: str, success: bool = True) -> None:
         """Show the latest action result without opening a foreground panel."""
-        self.set_state("success" if success else "error", message)
+        self.set_state(OverlayState.INSERTED if success else OverlayState.ERROR, message)
         self._listen_button.setToolTip(message)
         color = "#5dcf8b" if success else "#e06b66"
         self._set_button_style(color, "#ffffff")

@@ -353,6 +353,76 @@ class TestErrorHandlingIntegration:
         # This depends on system state
         devices = capture.list_input_devices()
         assert isinstance(devices, list)
+
+    def test_transcriber_start_failure_does_not_stick_running(self, monkeypatch):
+        """A failed microphone start leaves transcription ready to retry."""
+        from aiop.speech.transcriber import SpeechTranscriber, TranscriptionState
+
+        transcriber = SpeechTranscriber.__new__(SpeechTranscriber)
+        transcriber._is_running = False
+        transcriber._audio_buffer = []
+        transcriber._speech_start_time = None
+        transcriber._last_partial_at = 0.0
+        transcriber._partial_generation = 0
+        transcriber.state = TranscriptionState.IDLE
+        transcriber.audio_capture = type(
+            "FailingCapture",
+            (),
+            {"start": lambda self: (_ for _ in ()).throw(RuntimeError("no microphone"))},
+        )()
+
+        with pytest.raises(RuntimeError, match="no microphone"):
+            transcriber.start()
+
+        assert transcriber.is_running() is False
+        assert transcriber.get_state() is TranscriptionState.IDLE
+
+    def test_overlay_states_have_stable_user_facing_values(self):
+        """Overlay lifecycle states remain stable for UI and automation tests."""
+        from aiop.ui.overlay import OverlayState
+
+        assert [state.value for state in OverlayState] == [
+            "ready",
+            "listening",
+            "processing",
+            "inserted",
+            "error",
+        ]
+
+    def test_overlay_elapsed_format_is_stable(self):
+        """Recording duration is compact and readable in the overlay."""
+        from aiop.ui.overlay import DictationOverlay
+
+        assert DictationOverlay.format_elapsed(0) == "00:00"
+        assert DictationOverlay.format_elapsed(65.9) == "01:05"
+
+    def test_partial_transcription_result_is_non_final(self):
+        """Streaming previews must never enter the final insertion path."""
+        from aiop.speech.transcriber import SpeechTranscriber
+        import threading
+
+        results = []
+        transcriber = SpeechTranscriber.__new__(SpeechTranscriber)
+        transcriber.whisper_model = type(
+            "PreviewModel",
+            (),
+            {"transcribe": lambda self, *args, **kwargs: "draft words"},
+        )()
+        transcriber._transcription_lock = threading.Lock()
+        transcriber._is_running = True
+        transcriber._partial_generation = 0
+        transcriber._callbacks = [results.append]
+        transcriber.config = type(
+            "PreviewConfig",
+            (),
+            {"sample_rate": 16000, "language": "en", "translate": False, "temperature": 0.0},
+        )()
+
+        transcriber._run_partial(b"\x00" * 32000, 0.0, 0)
+
+        assert len(results) == 1
+        assert results[0].text == "draft words"
+        assert results[0].is_final is False
     
     def test_invalid_config_recovery(self, tmp_path):
         """Test recovery from invalid config file"""
