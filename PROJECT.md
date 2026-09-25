@@ -5,6 +5,121 @@
 
 ---
 
+## 0. PRODUCT FLOW DIRECTION
+
+### Reference Pattern
+
+Publicly documented voice-input products such as Wispr Flow use a simple promise and a tight loop: speak naturally anywhere the user can type, let the product clean up the speech, and insert the result at the active cursor. Their first-run experience teaches that loop before introducing advanced settings. AIOP should adopt that interaction pattern while keeping its own name, local-first architecture, visual language, and Windows action model.
+
+This is a product-pattern reference, not a request to copy another product's protected text, visual assets, branding, or implementation.
+
+### Target AIOP User Flow
+
+1. **Install and launch**
+   - Start AIOP in the tray and show a small floating microphone control.
+   - Explain that AIOP works in the currently focused Windows application.
+   - Do not require an email address or account before the first successful dictation.
+
+2. **First-run readiness**
+   - Confirm microphone access and show the selected input device.
+   - Explain the default shortcut: `Ctrl+Shift+Space`.
+   - Explain the interaction: focus a text field, press the shortcut, speak, press it again, and AIOP inserts polished text at the cursor.
+   - Offer a short microphone test before opening advanced settings.
+
+3. **Capture state**
+   - The overlay is always discoverable when dictation is active.
+   - Idle: neutral microphone icon and `Ready` state.
+   - Listening: expanded control, red/coral pulse, `Listening...`, and a visible stop affordance.
+   - Processing: `Cleaning up...` or `Transcribing...` while the audio is sent to Whisper.
+   - Success: brief confirmation such as `Inserted` before returning to the idle control.
+   - Error: actionable feedback such as `Microphone unavailable` or `No speech detected`.
+
+4. **Transcribe and improve**
+   - Convert speech into text with Whisper locally by default.
+   - Remove filler words and repeated fragments where confidence is high.
+   - Add punctuation and paragraph breaks without changing the user's meaning.
+   - Preserve uncertainty rather than inventing facts or silently rewriting intent.
+
+5. **Insert anywhere**
+   - Put the result into the focused application through the clipboard and paste path.
+   - Support browsers, email, chat, editors, terminals, and AI tools without per-app plugins where Windows permits it.
+   - Keep a recoverable copy of the last result in the AIOP history surface.
+
+6. **Personalize after value is proven**
+   - Let the user change the shortcut, microphone, language, model, and cleanup style from Settings.
+   - Add a vocabulary list for names, product terms, and technical words.
+   - Add snippets for frequently spoken text only after the base dictation loop is reliable.
+
+### Work Breakdown
+
+#### Part 1: Reliable First Dictation
+
+- [x] Launch a tray application with a floating overlay.
+- [x] Register a global dictation shortcut.
+- [x] Capture microphone audio and run local Whisper transcription.
+- [x] Insert recognized text into the focused application.
+- [x] Flush buffered speech when the user stops dictation.
+- [x] Show an explicit listening state in the overlay.
+- [x] Add microphone availability and permission diagnostics before recording.
+- [x] Add a deterministic first-run microphone readiness test.
+
+Validation for Part 1 microphone readiness:
+
+```text
+.venv/Scripts/python.exe -m pytest -q tests/test_audio.py tests/test_integration.py
+24 passed, 4 skipped
+```
+
+Validation for Part 2 state and partial transcription work:
+
+```text
+.venv/Scripts/python.exe -m pytest -q
+33 passed, 4 skipped
+```
+
+#### Part 2: Wispr-Style Interaction Quality
+
+- [x] Separate `Ready`, `Listening`, `Processing`, `Inserted`, and `Error` presentation states.
+- [x] Add a visible elapsed recording indicator.
+- [x] Add optional live partial text.
+- [ ] Add a press-and-hold mode alongside the current toggle mode.
+- [ ] Make no-speech, too-short-audio, and transcription failures understandable.
+- [ ] Preserve focus correctly while showing the overlay and pasting the result.
+- [ ] Add focused tests for state transitions and insertion failures.
+
+#### Part 3: Speech Cleanup
+
+- [ ] Add punctuation and paragraph formatting as a local post-processing stage.
+- [ ] Add conservative filler and repetition cleanup with an explicit setting.
+- [ ] Keep a raw transcript option for users who need verbatim capture.
+- [ ] Add regression fixtures for natural speech, corrections, pauses, and code terms.
+
+#### Part 4: Personal Vocabulary and Style
+
+- [ ] Add user vocabulary management and one-click correction capture.
+- [ ] Add per-context styles for messages, email, notes, and code.
+- [ ] Add reusable spoken snippets and shortcut expansion.
+- [ ] Keep vocabulary and style data local and exportable.
+
+#### Part 5: Trust, Setup, and Operations
+
+- [ ] Replace the current mandatory profile form with a no-account setup flow.
+- [ ] Explain local model storage, downloaded model size, and microphone handling.
+- [ ] Add a clear tray menu for pause, settings, model status, and quit.
+- [ ] Add a real tray icon and accessible labels/tooltips.
+- [ ] Add first-run recovery when the model, microphone, or shortcut is unavailable.
+
+### First-Run Acceptance Criteria
+
+- A new user can reach a focused text field and complete a test dictation without entering an email.
+- The overlay visibly changes to `Listening...` within one second of activation.
+- Stopping capture produces either inserted text or a clear next action within five seconds on the base model.
+- The user can understand whether AIOP is idle, listening, processing, successful, or blocked.
+- The same flow works in at least one browser text field, a text editor, and a terminal.
+- No voice data leaves the machine unless the user explicitly enables a cloud provider.
+
+---
+
 ## 1. PROJECT SUMMARY
 
 ### What This Project Is
