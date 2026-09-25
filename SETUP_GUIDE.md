@@ -65,6 +65,77 @@ This provides cross-platform speech recognition without needing to compile whisp
 
 ## Running the Application
 
+## Run & Test Locally
+
+Open PowerShell in `D:\ai-operating-system` and run:
+
+```powershell
+# Use Python 3.12 (required for the pinned PyAudio support)
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# Install runtime and development dependencies
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python -m pip install whispercpp
+python -m pip install -e .
+
+# Run automated tests
+python -m pytest tests/ -v
+
+# Start the desktop application for manual testing
+python -m aiop
+```
+
+No environment variables are required on Windows. Keep the PowerShell window
+open while AIOP is running. The first launch opens local onboarding; after it
+is completed, the application starts with the compact listening control.
+
+### Stop AIOP and Reset First Run
+
+Stop only AIOP instances that were started from this repository:
+
+```powershell
+Get-CimInstance Win32_Process |
+	Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*ai-operating-system*.venv* -m aiop*' } |
+	ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+```
+
+Reset onboarding and local settings while keeping downloaded models:
+
+```powershell
+Remove-Item -Recurse -Force "$env:APPDATA\aiop\config"
+```
+
+Reset all local AIOP data, including cached models and logs:
+
+```powershell
+Remove-Item -Recurse -Force "$env:APPDATA\aiop"
+```
+
+### Manual Verification Checklist
+
+Automated tests validate code paths; they do not prove microphone, focus,
+clipboard, Explorer, or visual behavior. Perform this checklist on a real
+Windows desktop:
+
+1. Stop existing AIOP instances and start the application.
+2. Complete the local sign-up dialog.
+3. Confirm only the compact listening control is visible.
+4. Focus Notepad, an editor, or an AI chat input.
+5. Click the listening control and confirm its listening animation.
+6. Speak a normal sentence and stop listening.
+7. Confirm the recognized text is inserted into the previously focused app.
+8. Say “Open file manager.”
+9. Confirm Windows File Explorer actually opens and feedback reports success.
+10. Stop and restart AIOP; confirm onboarding does not appear again.
+11. Test an empty/unclear utterance and confirm an error or no-action state.
+12. Test a phrase that is not an allowlisted command; confirm it is treated as dictation.
+
+Real speech recognition and the complete manual checklist are **not manually
+verified** in headless or terminal-only runs.
+
 ### Basic Run
 
 ```bash

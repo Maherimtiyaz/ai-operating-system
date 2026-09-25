@@ -305,7 +305,7 @@ class Win32API:
             ctypes.c_ubyte,
             ctypes.c_ubyte,
             ctypes.wintypes.DWORD,
-            ctypes.wintypes.ULONG_PTR,
+            ctypes.c_void_p,
         ]
         self.user32.keybd_event.restype = None
         
@@ -397,6 +397,10 @@ class Win32API:
         
         self.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)(callback), 0)
         return windows
+
+    def enumerate_windows(self) -> List[WindowInfo]:
+        """Compatibility alias for enum_windows."""
+        return self.enum_windows()
     
     def get_active_window(self) -> Optional[WindowInfo]:
         """Get information about the active window"""

@@ -5,6 +5,9 @@ Whisper.cpp integration for AIOP
 import ctypes
 import os
 import time
+import subprocess
+import tempfile
+import wave
 import numpy as np
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Union, Generator
@@ -66,18 +69,24 @@ class WhisperCPP:
     ):
         self.model_path = Path(model_path) if model_path else None
         self.library_path = library_path or self._find_library()
+        self.cli_path = self._find_cli()
         self.parameters = parameters or WhisperParameters()
         self.lib: Optional[ctypes.CDLL] = None
         self.ctx: Optional[ctypes.c_void_p] = None
         self.state: Optional[ctypes.c_void_p] = None
         self._is_loaded = False
         self._load_library()
+
+    def _find_cli(self) -> Optional[Path]:
+        """Find the official Whisper command-line backend."""
+        candidates = [Path("whisper-cli.exe"), Path("models") / "whisper-cli.exe"]
+        return next((path for path in candidates if path.exists()), None)
     
     def _find_library(self) -> str:
         """Find whisper.cpp library"""
         # First, try to use the Python whispercpp package if available
         try:
-            import whispercpp
+            from whispercpp import api_cpp2py_export  # noqa: F401
             logger.info("Using Python whispercpp package")
             return "python_package"  # Special marker to indicate using Python package
         except ImportError:
@@ -86,6 +95,7 @@ class WhisperCPP:
         # Try common locations for native library
         possible_paths = [
             "whisper.dll",
+            str(Path("models") / "whisper.dll"),
             "whisper.cpp/whisper.dll",
             "libwhisper.dll",
             "/usr/local/lib/libwhisper.so",
@@ -112,7 +122,13 @@ class WhisperCPP:
         """Load whisper.cpp library"""
         # If using Python whispercpp package, no need to load native library
         if self.library_path == "python_package":
-            logger.info("Using Python whispercpp package - no native library needed")
+            try:
+                from whispercpp import api_cpp2py_export  # noqa: F401
+            except ImportError as error:
+                raise exceptions.SpeechError(
+                    "The installed whispercpp package has no usable Windows native extension"
+                ) from error
+            logger.info("Using Python whispercpp package")
             self._is_loaded = True
             return
         
@@ -124,6 +140,11 @@ class WhisperCPP:
             self._setup_functions()
             logger.info(f"Loaded whisper.cpp library: {self.library_path}")
         except Exception as e:
+            if self.cli_path:
+                self.lib = None
+                logger.info("Using official whisper-cli.exe backend")
+                self._is_loaded = True
+                return
             raise exceptions.SpeechError(f"Failed to load whisper.cpp library: {e}")
     
     def _setup_functions(self) -> None:
@@ -219,6 +240,11 @@ class WhisperCPP:
         
         if not self.model_path.exists():
             raise exceptions.SpeechError(f"Model file not found: {self.model_path}")
+
+        if self.lib is None and self.cli_path:
+            self._is_loaded = True
+            logger.info(f"Using whisper-cli with model: {self.model_path}")
+            return
         
         # Free existing context
         if self.ctx:
@@ -240,16 +266,55 @@ class WhisperCPP:
     
     def unload_model(self) -> None:
         """Unload whisper model"""
-        if self.state:
+        if self.state and self.lib:
             self.lib.whisper_free_state(self.state)
             self.state = None
         
-        if self.ctx:
+        if self.ctx and self.lib:
             self.lib.whisper_free(self.ctx)
             self.ctx = None
         
         self._is_loaded = False
         logger.info("Unloaded whisper model")
+
+    def _transcribe_cli(self, audio_data: Union[bytes, np.ndarray], sample_rate: int) -> str:
+        """Transcribe one utterance with the official fixed executable."""
+        if not self.cli_path or not self.model_path:
+            raise exceptions.SpeechError("Whisper CLI backend is not configured")
+
+        with tempfile.TemporaryDirectory(prefix="aiop-whisper-") as temp_dir:
+            temp_path = Path(temp_dir)
+            audio_path = temp_path / "audio.wav"
+            output_prefix = temp_path / "result"
+            if isinstance(audio_data, bytes):
+                samples = np.frombuffer(audio_data, dtype=np.int16)
+            else:
+                samples = np.asarray(audio_data, dtype=np.float32)
+                samples = np.clip(samples, -1.0, 1.0)
+                samples = (samples * 32767).astype(np.int16)
+
+            with wave.open(str(audio_path), "wb") as audio_file:
+                audio_file.setnchannels(1)
+                audio_file.setsampwidth(2)
+                audio_file.setframerate(sample_rate)
+                audio_file.writeframes(samples.tobytes())
+
+            command = [
+                str(self.cli_path),
+                "-m", str(self.model_path),
+                "-f", str(audio_path),
+                "-otxt",
+                "-of", str(output_prefix),
+                "-nt",
+                "-np",
+            ]
+            completed = subprocess.run(command, capture_output=True, text=True, check=False)
+            result_path = output_prefix.with_suffix(".txt")
+            if completed.returncode != 0 or not result_path.exists():
+                raise exceptions.SpeechError(
+                    completed.stderr.strip() or "Whisper transcription failed"
+                )
+            return result_path.read_text(encoding="utf-8").strip()
     
     def transcribe(
         self,
@@ -274,6 +339,9 @@ class WhisperCPP:
         Returns:
             Transcribed text
         """
+        if self.lib is None and self.cli_path:
+            return self._transcribe_cli(audio_data, sample_rate)
+
         if not self.ctx:
             self.load_model()
         

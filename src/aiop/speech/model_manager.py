@@ -78,7 +78,7 @@ class ModelManager:
             "file_size": 142 * 1024 * 1024,
             "file_name": "ggml-base.en.bin",
             "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin",
-            "sha256": "c17d159a9695c71e68493846b33890a5a067385832923a353f640a5a1b8d1234",
+            "sha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
             "languages": ["en"],
             "is_multilingual": False,
         },

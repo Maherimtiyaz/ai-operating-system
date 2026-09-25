@@ -13,6 +13,21 @@ from .win32_api import VirtualKey, ModifierKey, get_win32_api
 logger = logging.get_logger(__name__)
 
 
+class WNDCLASSW(ctypes.Structure):
+    _fields_ = [
+        ("style", ctypes.wintypes.UINT),
+        ("lpfnWndProc", ctypes.c_void_p),
+        ("cbClsExtra", ctypes.c_int),
+        ("cbWndExtra", ctypes.c_int),
+        ("hInstance", ctypes.c_void_p),
+        ("hIcon", ctypes.c_void_p),
+        ("hCursor", ctypes.c_void_p),
+        ("hbrBackground", ctypes.c_void_p),
+        ("lpszMenuName", ctypes.wintypes.LPCWSTR),
+        ("lpszClassName", ctypes.wintypes.LPCWSTR),
+    ]
+
+
 # Hotkey callback type
 HotkeyCallback = Callable[[], None]
 
@@ -44,6 +59,33 @@ class HotkeyManager:
             return
         
         self.user32 = ctypes.WinDLL('user32', use_last_error=True)
+        self.kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        self.user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
+        self.user32.RegisterClassW.restype = ctypes.c_ushort
+        self.user32.CreateWindowExW.argtypes = [
+            ctypes.wintypes.DWORD,
+            ctypes.wintypes.LPCWSTR,
+            ctypes.wintypes.LPCWSTR,
+            ctypes.wintypes.DWORD,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.wintypes.HWND,
+            ctypes.wintypes.HMENU,
+            ctypes.c_void_p,
+            ctypes.wintypes.LPVOID,
+        ]
+        self.user32.CreateWindowExW.restype = ctypes.wintypes.HWND
+        self.user32.DefWindowProcW.argtypes = [
+            ctypes.wintypes.HWND,
+            ctypes.c_uint,
+            ctypes.wintypes.WPARAM,
+            ctypes.wintypes.LPARAM,
+        ]
+        self.user32.DefWindowProcW.restype = ctypes.c_long
+        self.kernel32.GetModuleHandleW.argtypes = [ctypes.wintypes.LPCWSTR]
+        self.kernel32.GetModuleHandleW.restype = ctypes.c_void_p
         self.hotkeys: Dict[int, Hotkey] = {}
         self.next_id = 1
         self._window_class = "AIOPHotkeyWindow"
@@ -55,9 +97,10 @@ class HotkeyManager:
         """Set up a message-only window for hotkey handling"""
         try:
             # Create a message-only window
-            wc = ctypes.wintypes.WNDCLASSW()
-            wc.lpfnWndProc = self._window_proc_type(self._window_proc_impl)
-            wc.hInstance = self.user32.GetModuleHandleW(None)
+            self._window_proc = self._window_proc_type(self._window_proc_impl)
+            wc = WNDCLASSW()
+            wc.lpfnWndProc = ctypes.cast(self._window_proc, ctypes.c_void_p)
+            wc.hInstance = self.kernel32.GetModuleHandleW(None)
             wc.lpszClassName = self._window_class
             
             if not self.user32.RegisterClassW(ctypes.byref(wc)):
@@ -71,9 +114,7 @@ class HotkeyManager:
                 0,
                 0, 0, 0, 0,
                 0, 0,
-                None,
-                None,
-                self.user32.GetModuleHandleW(None),
+                self.kernel32.GetModuleHandleW(None),
                 None,
             )
             
@@ -101,17 +142,14 @@ class HotkeyManager:
     @staticmethod
     def _window_proc_type(func):
         """Window procedure type decorator"""
-        def wrapper(hwnd, msg, wparam, lparam):
-            return func(hwnd, msg, wparam, lparam)
-        
-        wrapper.argtypes = [
+        callback_type = ctypes.WINFUNCTYPE(
+            ctypes.c_long,
             ctypes.wintypes.HWND,
             ctypes.c_uint,
             ctypes.wintypes.WPARAM,
             ctypes.wintypes.LPARAM,
-        ]
-        wrapper.restype = ctypes.wintypes.LRESULT
-        return wrapper
+        )
+        return callback_type(func)
     
     def register_hotkey(
         self,

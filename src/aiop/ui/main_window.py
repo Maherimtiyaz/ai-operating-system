@@ -6,7 +6,7 @@ import sys
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
     QPushButton, QLabel, QTextEdit, QSystemTrayIcon, QMenu, QApplication,
-    QFrame, QScrollArea, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
+    QFrame, QScrollArea, QSizePolicy, QSpacerItem, QGraphicsOpacityEffect
 )
 from PyQt6.QtGui import QIcon, QAction, QFont, QColor, QPalette, QLinearGradient, QPainter
 from PyQt6.QtCore import Qt, QSize, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty
@@ -105,7 +105,7 @@ class StatusIndicator(QFrame):
     def opacity(self, value):
         effect = self.graphicsEffect()
         if not effect:
-            effect = QGraphicsDropShadowEffect()
+            effect = QGraphicsOpacityEffect()
             self.setGraphicsEffect(effect)
         effect.setOpacity(value)
     

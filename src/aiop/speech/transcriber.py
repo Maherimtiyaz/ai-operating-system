@@ -107,7 +107,7 @@ class SpeechTranscriber:
             
             if not result.is_speech:
                 # Check if we have enough speech
-                duration = time.time() - self._speech_start_time
+                duration = time.time() - (self._speech_start_time or time.time())
                 if duration >= self.config.min_speech_duration:
                     self.state = TranscriptionState.PROCESSING
                     logger.debug(f"Speech ended after {duration:.2f}s - processing")
@@ -117,7 +117,7 @@ class SpeechTranscriber:
                     self._reset_buffer()
             
             # Check for max duration
-            duration = time.time() - self._speech_start_time
+            duration = time.time() - (self._speech_start_time or time.time())
             if duration >= self.config.max_speech_duration:
                 self.state = TranscriptionState.PROCESSING
                 logger.debug(f"Max duration reached ({duration:.2f}s) - processing")
@@ -130,6 +130,11 @@ class SpeechTranscriber:
     def _process_buffer(self) -> None:
         """Process buffered audio"""
         if not self._audio_buffer:
+            self._reset_buffer()
+            return
+
+        if not self.whisper_model:
+            logger.error("Cannot transcribe: Whisper model is unavailable")
             self._reset_buffer()
             return
         

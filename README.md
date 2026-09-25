@@ -110,6 +110,34 @@ QT_QPA_PLATFORM=offscreen python -m aiop
 QT_QPA_PLATFORM=wayland python -m aiop
 ```
 
+## Run & Test Locally (Windows)
+
+```powershell
+cd D:\ai-operating-system
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python -m pip install whispercpp
+python -m pip install -e .
+python -m pytest tests/ -v
+python -m aiop
+```
+
+The app requires no environment variables. To stop AIOP instances started from
+this checkout, run:
+
+```powershell
+Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*ai-operating-system*.venv* -m aiop*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+```
+
+For a clean onboarding run, remove only `$env:APPDATA\aiop\config`. Remove
+`$env:APPDATA\aiop` to clear settings, logs, and downloaded models.
+
+Automated tests do not replace manual verification. Manually confirm onboarding,
+the compact listening animation, insertion into a focused app, the real File
+Explorer action, restart behavior, and failure feedback on a Windows desktop.
+
 ### First Use
 
 1. **Launch** the application

@@ -60,6 +60,7 @@ def check_whisper_library() -> bool:
     try:
         # Try the Python whispercpp package first (easier to install)
         import whispercpp
+        from whispercpp import api_cpp2py_export  # noqa: F401
         logger.info("whispercpp Python package is available")
         return True
     except ImportError:

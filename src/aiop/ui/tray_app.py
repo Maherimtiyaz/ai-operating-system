@@ -4,6 +4,7 @@ Tray application for AIOP
 
 import sys
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QIcon
 from typing import Optional
 from ..core import logging
@@ -11,14 +12,20 @@ from .main_window import MainWindow, get_main_window
 from .overlay import get_overlay
 from ..speech import get_transcriber
 from ..windows import register_hotkey, get_hotkey_manager
+from ..windows import ActionRouter
+from ..core import config
+from .onboarding import OnboardingDialog
 
 logger = logging.get_logger(__name__)
 
 
-class TrayApp:
+class TrayApp(QObject):
     """Tray application wrapper"""
+
+    transcription_ready = pyqtSignal(object)
     
     def __init__(self):
+        super().__init__()
         self.app = QApplication(sys.argv)
         self.app.setApplicationName("AI Operating Platform")
         self.app.setApplicationVersion("0.1.0")
@@ -31,33 +38,30 @@ class TrayApp:
         self.window = get_main_window()
         self.overlay = get_overlay()
         self.transcriber = get_transcriber()
+        self.action_router = ActionRouter()
         
         # Setup hotkeys
         self._setup_hotkeys()
         
         # Connect signals
         self._connect_signals()
+        self.overlay.add_toggle_callback(self._on_dictation_hotkey)
+        self.transcription_ready.connect(self._on_transcription_result)
+        self.transcriber.add_callback(self._queue_transcription_result)
     
     def _setup_hotkeys(self) -> None:
         """Set up global hotkeys"""
-        try:
-            # Register dictation hotkey
-            hotkey_manager = get_hotkey_manager()
-            hotkey_id = hotkey_manager.register_from_string(
-                "Ctrl+Shift+Space",
-                self._on_dictation_hotkey,
-            )
-            logger.info(f"Registered dictation hotkey (ID: {hotkey_id})")
-            
-            # Register overlay hotkey
-            hotkey_id = hotkey_manager.register_from_string(
-                "Ctrl+Shift+O",
-                self._on_overlay_hotkey,
-            )
-            logger.info(f"Registered overlay hotkey (ID: {hotkey_id})")
-            
-        except Exception as e:
-            logger.error(f"Failed to register hotkeys: {e}")
+        hotkey_manager = get_hotkey_manager()
+        hotkeys = [
+            ("Ctrl+Shift+Space", self._on_dictation_hotkey, "dictation"),
+            ("Ctrl+Shift+O", self._on_overlay_hotkey, "overlay"),
+        ]
+        for shortcut, callback, name in hotkeys:
+            try:
+                hotkey_id = hotkey_manager.register_from_string(shortcut, callback)
+                logger.info("Registered %s hotkey (ID: %s)", name, hotkey_id)
+            except Exception as error:
+                logger.warning("Could not register %s hotkey (%s): %s", name, shortcut, error)
     
     def _connect_signals(self) -> None:
         """Connect application signals"""
@@ -69,15 +73,40 @@ class TrayApp:
         if self.transcriber.is_running():
             self.transcriber.stop()
             self.overlay.set_listening(False)
-            self.overlay.hide()
         else:
             self.transcriber.start()
             self.overlay.set_listening(True)
-            self.overlay.show()
     
     def _on_overlay_hotkey(self) -> None:
         """Handle overlay hotkey"""
         self.overlay.toggle()
+
+    def _on_transcription_result(self, result) -> None:
+        """Route final speech to an allowlisted action or focused app."""
+        if not result.is_final or not result.text:
+            return
+        self.overlay.set_state("transcribing", "Transcribing")
+        self.app.processEvents()
+        if self.action_router.FILE_MANAGER_PATTERN.search(result.text):
+            self.overlay.set_state("executing", "Opening File Manager")
+            self.app.processEvents()
+        action_result = self.action_router.route(result.text)
+        self.overlay.set_feedback(action_result.message, action_result.success)
+
+    def _queue_transcription_result(self, result) -> None:
+        """Move transcription results from the audio thread to Qt's UI thread."""
+        self.transcription_ready.emit(result)
+
+    def _show_onboarding(self) -> None:
+        profile = config.get_config().profile
+        if profile.completed:
+            return
+        dialog = OnboardingDialog()
+        if dialog.exec() == OnboardingDialog.DialogCode.Accepted:
+            profile.name = dialog.name_input.text().strip()
+            profile.email = dialog.email_input.text().strip()
+            profile.completed = True
+            config.get_config_manager()._save_config()
     
     def _on_quit(self) -> None:
         """Handle application quit"""
@@ -96,12 +125,10 @@ class TrayApp:
     
     def run(self) -> int:
         """Run the application"""
-        # Show main window or just tray
-        if len(sys.argv) > 1 and sys.argv[1] == "--tray-only":
-            # Only show tray icon
-            self.window.hide()
-        else:
-            self.window.show()
+        # Keep the workspace out of the way; the listening control is the primary UI.
+        self.window.hide()
+        self._show_onboarding()
+        self.overlay.show()
         
         return self.app.exec()
 

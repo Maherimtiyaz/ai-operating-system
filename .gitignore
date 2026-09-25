@@ -5,9 +5,12 @@ __pycache__/
 *.pyo
 *.pyd
 
+# Local virtual environments
+.venv/
+venv/
+
 # Logs
 *.log
-logs/
 
 # Local environment
 .env
@@ -21,6 +24,9 @@ htmlcov/
 
 # Pytest
 .pytest_cache/
+
+# Downloaded speech models and native runtime binaries
+models/*
 
 # Mypy
 .mypy_cache/

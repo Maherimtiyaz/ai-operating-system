@@ -95,6 +95,14 @@ class UIConfig:
     overlay_width: int = 400
     overlay_height: int = 200
     show_tray_icon: bool = True
+
+
+@dataclass
+class ProfileConfig:
+    """Local profile created during first-run onboarding."""
+    name: str = ""
+    email: str = ""
+    completed: bool = False
     
 
 @dataclass
@@ -108,6 +116,7 @@ class AIOPConfig:
     plugin: PluginConfig = field(default_factory=PluginConfig)
     mcp: MCPConfig = field(default_factory=MCPConfig)
     ui: UIConfig = field(default_factory=UIConfig)
+    profile: ProfileConfig = field(default_factory=ProfileConfig)
     
 
 class ConfigManager:
@@ -151,6 +160,8 @@ class ConfigManager:
             self.config.mcp = MCPConfig(**config_data['mcp'])
         if 'ui' in config_data:
             self.config.ui = UIConfig(**config_data['ui'])
+        if 'profile' in config_data:
+            self.config.profile = ProfileConfig(**config_data['profile'])
     
     def _save_config(self) -> None:
         """Save configuration to file"""
@@ -165,6 +176,7 @@ class ConfigManager:
             'plugin': self.config.plugin.__dict__,
             'mcp': self.config.mcp.__dict__,
             'ui': self.config.ui.__dict__,
+            'profile': self.config.profile.__dict__,
         }
         
         try:

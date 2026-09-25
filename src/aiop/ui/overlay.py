@@ -3,14 +3,65 @@ Dictation overlay for AIOP
 """
 
 import time
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit, QPushButton
-from PyQt6.QtCore import Qt, QTimer, QPoint, QSize
-from PyQt6.QtGui import QFont, QColor, QPalette, QTextCursor
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit, QPushButton, QGraphicsOpacityEffect
+from PyQt6.QtCore import Qt, QTimer, QPoint, QSize, QPropertyAnimation, QEasingCurve
+from PyQt6.QtGui import QFont, QColor, QPalette, QTextCursor, QPainter, QPen, QBrush
 from typing import Optional, Callable
 from ..core import logging
 from ..speech import TranscriptionResult
 
 logger = logging.get_logger(__name__)
+
+
+class ListeningButton(QPushButton):
+    """Custom-painted microphone control with a calm listening pulse."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._listening = False
+        self._phase = 0.0
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._advance)
+        self.setFixedSize(58, 58)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def set_listening(self, listening: bool) -> None:
+        self._listening = listening
+        if listening:
+            self._timer.start(32)
+        else:
+            self._timer.stop()
+            self._phase = 0.0
+        self.update()
+
+    def _advance(self) -> None:
+        self._phase = (self._phase + 0.08) % 6.283
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        center = self.rect().center()
+
+        if self._listening:
+            pulse = 2.0 + (1.0 + __import__("math").sin(self._phase)) * 2.0
+            painter.setPen(QPen(QColor(232, 112, 102, 90), 2.0))
+            painter.drawEllipse(center, int(27 + pulse), int(27 + pulse))
+            fill = QColor("#e07066")
+            icon = QColor("#ffffff")
+        else:
+            fill = QColor("#27313a")
+            icon = QColor("#dce5ec")
+
+        painter.setPen(QPen(QColor(255, 255, 255, 28), 1.0))
+        painter.setBrush(QBrush(fill))
+        painter.drawEllipse(center, 27, 27)
+
+        painter.setPen(QPen(icon, 2.4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.drawRoundedRect(center.x() - 6, center.y() - 14, 12, 21, 6, 6)
+        painter.drawArc(center.x() - 12, center.y() - 7, 24, 22, 200 * 16, 140 * 16)
+        painter.drawLine(center.x(), center.y() + 15, center.x(), center.y() + 20)
+        painter.drawLine(center.x() - 7, center.y() + 20, center.x() + 7, center.y() + 20)
 
 
 class DictationOverlay(QWidget):
@@ -39,73 +90,47 @@ class DictationOverlay(QWidget):
         # Callbacks
         self._on_transcription_callbacks = []
         self._on_state_change_callbacks = []
+        self._on_toggle_callbacks = []
+        self._opacity_effect = QGraphicsOpacityEffect(self._listen_button)
+        self._listen_button.setGraphicsEffect(self._opacity_effect)
+        self._pulse_animation = QPropertyAnimation(self._opacity_effect, b"opacity", self)
+        self._pulse_animation.setDuration(900)
+        self._pulse_animation.setStartValue(0.65)
+        self._pulse_animation.setEndValue(1.0)
+        self._pulse_animation.setEasingCurve(QEasingCurve.Type.InOutSine)
+        self._pulse_animation.setLoopCount(-1)
     
     def _setup_ui(self) -> None:
         """Set up UI"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(0)
         
-        # Header
-        header_layout = QHBoxLayout()
-        header_layout.setSpacing(8)
-        
+        self._listen_button = ListeningButton()
+        self._listen_button.setToolTip("Start listening")
+        self._listen_button.clicked.connect(self._emit_toggle)
+        layout.addWidget(self._listen_button)
+
         self._status_label = QLabel("Ready")
-        self._status_label.setFont(QFont("Segoe UI", 10))
-        self._status_label.setStyleSheet("color: #a0a0a0;")
-        header_layout.addWidget(self._status_label)
-        
-        header_layout.addStretch()
-        
-        self._close_button = QPushButton("×")
-        self._close_button.setFixedSize(24, 24)
-        self._close_button.setStyleSheet(
-            "QPushButton { background-color: transparent; color: #a0a0a0; border: none; font-size: 16px; }"
-            "QPushButton:hover { color: #e0e0e0; }"
-        )
-        self._close_button.clicked.connect(self.hide)
-        header_layout.addWidget(self._close_button)
-        
-        layout.addLayout(header_layout)
-        
-        # Transcription area
+        self._status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status_label.setStyleSheet("color: #9aa0a6; font-size: 11px; font-weight: 600;")
+        self._status_label.hide()
+        layout.addWidget(self._status_label)
+        self._hint_label = QLabel()
+        self._hint_label.hide()
         self._transcription_edit = QTextEdit()
-        self._transcription_edit.setReadOnly(True)
-        self._transcription_edit.setFont(QFont("Segoe UI", 11))
-        self._transcription_edit.setStyleSheet(
-            "QTextEdit { background-color: #252525; color: #e0e0e0; border: 1px solid #404040; border-radius: 4px; padding: 8px; }"
-        )
-        self._transcription_edit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._transcription_edit.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._transcription_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-        layout.addWidget(self._transcription_edit)
-        
-        # Footer
-        footer_layout = QHBoxLayout()
-        footer_layout.setSpacing(8)
-        
-        self._hint_label = QLabel("Press Ctrl+Shift+Space to start")
-        self._hint_label.setFont(QFont("Segoe UI", 9))
-        self._hint_label.setStyleSheet("color: #606060;")
-        footer_layout.addWidget(self._hint_label)
-        
-        footer_layout.addStretch()
-        
-        self._clear_button = QPushButton("Clear")
-        self._clear_button.setFixedSize(60, 24)
-        self._clear_button.setStyleSheet(
-            "QPushButton { background-color: #303030; color: #a0a0a0; border: 1px solid #404040; border-radius: 4px; font-size: 11px; }"
-            "QPushButton:hover { background-color: #404040; }"
-        )
-        self._clear_button.clicked.connect(self.clear)
-        footer_layout.addWidget(self._clear_button)
-        
-        layout.addLayout(footer_layout)
+        self._transcription_edit.hide()
+        self._close_button = QPushButton()
+        self._close_button.hide()
+        self._clear_button = QPushButton()
+        self._clear_button.hide()
     
     def _setup_styles(self) -> None:
         """Set up styles"""
         self.setStyleSheet(
-            "DictationOverlay { background-color: #1e1e1e; border: 1px solid #404040; border-radius: 8px; }"
+            "DictationOverlay { background-color: #202124; border: 1px solid #4a4d52; border-radius: 38px; }"
+            "QPushButton { background-color: #30343a; color: #d9dde3; border: 2px solid #58616d; border-radius: 26px; font-size: 22px; }"
+            "QPushButton:hover { background-color: #3b4048; color: #ffffff; }"
         )
     
     def _setup_position(self) -> None:
@@ -114,8 +139,8 @@ class DictationOverlay(QWidget):
         screen = self.screen()
         if screen:
             screen_geometry = screen.geometry()
-            width = 400
-            height = 200
+            width = 64
+            height = 64
             x = screen_geometry.width() - width - 20
             y = screen_geometry.height() - height - 20
             self.setGeometry(x, y, width, height)
@@ -152,6 +177,9 @@ class DictationOverlay(QWidget):
     def set_listening(self, listening: bool) -> None:
         """Set listening state"""
         self._is_listening = listening
+        self._status_label.hide()
+        self._resize_control(64, 64)
+        self._listen_button.set_listening(listening)
         
         if listening:
             self._status_label.setText("Listening...")
@@ -163,6 +191,14 @@ class DictationOverlay(QWidget):
             self._status_label.setStyleSheet("color: #a0a0a0;")
             self._hint_label.setText("Press Ctrl+Shift+Space to start")
             self._hint_label.setStyleSheet("color: #606060;")
+
+        self._listen_button.setToolTip("Stop listening" if listening else "Start listening")
+        self._set_button_style("#d95f59" if listening else "#30343a", "#ffffff" if listening else "#d9dde3")
+        if listening:
+            self._pulse_animation.start()
+        else:
+            self._pulse_animation.stop()
+            self._opacity_effect.setOpacity(1.0)
         
         # Notify callbacks
         for callback in self._on_state_change_callbacks:
@@ -170,6 +206,29 @@ class DictationOverlay(QWidget):
                 callback(listening)
             except Exception as e:
                 logger.error(f"Error in state change callback: {e}")
+
+    def set_state(self, state: str, message: str = "") -> None:
+        """Show a transient processing or execution state."""
+        self._is_listening = False
+        self._pulse_animation.stop()
+        self._opacity_effect.setOpacity(1.0)
+        self._status_label.setText(message or state.title())
+        color = "#5dcf8b" if state == "success" else "#e06b66" if state == "error" else "#75c7c5"
+        self._status_label.setStyleSheet(f"color: {color}; font-size: 11px; font-weight: 600;")
+        self._status_label.show()
+        self._resize_control(190, 64)
+        self._listen_button.setToolTip(message or state.title())
+        self._set_button_style("#30343a", "#75c7c5")
+
+    def _resize_control(self, width: int, height: int) -> None:
+        self.setFixedSize(width, height)
+        screen = self.screen()
+        if screen:
+            geometry = screen.availableGeometry()
+            self.move(geometry.right() - width - 20, geometry.bottom() - height - 20)
+
+    def _set_button_style(self, background: str, foreground: str) -> None:
+        self._listen_button.setStyleSheet("QPushButton { background: transparent; border: none; }")
     
     def is_listening(self) -> bool:
         """Check if currently listening"""
@@ -212,7 +271,6 @@ class DictationOverlay(QWidget):
     def show(self) -> None:
         """Show overlay"""
         super().show()
-        self.activateWindow()
         self._auto_hide_timer.stop()
     
     def hide(self) -> None:
@@ -234,6 +292,25 @@ class DictationOverlay(QWidget):
     def add_state_change_callback(self, callback: Callable[[bool], None]) -> None:
         """Add callback for state changes"""
         self._on_state_change_callbacks.append(callback)
+
+    def add_toggle_callback(self, callback: Callable[[], None]) -> None:
+        """Add callback for the listening button."""
+        self._on_toggle_callbacks.append(callback)
+
+    def set_feedback(self, message: str, success: bool = True) -> None:
+        """Show the latest action result without opening a foreground panel."""
+        self.set_state("success" if success else "error", message)
+        self._listen_button.setToolTip(message)
+        color = "#5dcf8b" if success else "#e06b66"
+        self._set_button_style(color, "#ffffff")
+        QTimer.singleShot(1800, lambda: self.set_listening(False))
+
+    def _emit_toggle(self) -> None:
+        for callback in self._on_toggle_callbacks:
+            try:
+                callback()
+            except Exception as e:
+                logger.error(f"Error in toggle callback: {e}")
     
     def on_transcription_result(self, result: TranscriptionResult) -> None:
         """Handle transcription result"""
