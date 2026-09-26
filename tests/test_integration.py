@@ -469,6 +469,93 @@ class TestErrorHandlingIntegration:
         assert result.message == "Could not copy dictation"
         win32._send_key.assert_not_called()
 
+    def test_action_router_reports_focus_restore_failure(self, monkeypatch):
+        """Insertion fails clearly when the captured app cannot be restored."""
+        from aiop.windows.actions import ActionRouter
+
+        clipboard = Mock()
+        clipboard.set_text.return_value = True
+        win32 = Mock()
+        win32.set_foreground_window.return_value = False
+        monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
+        monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
+
+        result = ActionRouter().route("hello world", target_window=123)
+
+        assert result.success is False
+        assert result.message == "Could not restore focused application"
+        win32._send_key_down.assert_not_called()
+
+    def test_action_router_reports_paste_failure(self, monkeypatch):
+        """Insertion reports keyboard injection failures without claiming success."""
+        from aiop.windows.actions import ActionRouter
+
+        clipboard = Mock()
+        clipboard.set_text.return_value = True
+        win32 = Mock()
+        win32.set_foreground_window.return_value = True
+        win32._send_key_down.side_effect = RuntimeError("paste unavailable")
+        monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
+        monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
+
+        result = ActionRouter().route("hello world", target_window=123)
+
+        assert result.success is False
+        assert result.message == "Could not insert dictation"
+
+    def test_action_router_rejects_whitespace_only_text(self):
+        """Whitespace-only speech is not treated as an insertion request."""
+        from aiop.windows.actions import ActionRouter
+
+        result = ActionRouter().route(" \t\n ")
+
+        assert result.handled is False
+        assert result.success is False
+        assert result.message == "No speech recognized"
+
+    def test_tray_app_maps_empty_status_to_user_feedback(self):
+        """Empty transcription statuses become distinct visible feedback."""
+        from aiop.speech.transcriber import TranscriptionResult
+        from aiop.ui.tray_app import TrayApp
+
+        class FeedbackOverlay:
+            def __init__(self):
+                self.feedback = []
+
+            def set_feedback(self, message, success=True):
+                self.feedback.append((message, success))
+
+        tray = TrayApp.__new__(TrayApp)
+        tray.overlay = FeedbackOverlay()
+        tray._dictation_target_window = 123
+
+        tray._on_transcription_result(TranscriptionResult(text="", is_final=True, status="no_speech"))
+        tray._on_transcription_result(TranscriptionResult(text="", is_final=True, status="too_short"))
+
+        assert tray.overlay.feedback == [
+            ("I didn't hear anything. Hold the shortcut and speak.", False),
+            ("That was too short. Keep speaking a little longer.", False),
+        ]
+        assert tray._dictation_target_window is None
+
+    def test_action_router_uses_captured_target_window(self, monkeypatch):
+        """Dictation pastes into the window focused when listening began."""
+        from aiop.windows.actions import ActionRouter
+
+        clipboard = Mock()
+        clipboard.set_text.return_value = True
+        win32 = Mock()
+        win32.get_foreground_window.return_value = 999
+        win32.set_foreground_window.return_value = True
+        monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
+        monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
+
+        result = ActionRouter().route("hello world", target_window=123)
+
+        assert result.success is True
+        win32.set_foreground_window.assert_called_once_with(123)
+        win32._send_key_down.assert_called_once()
+
     @pytest.mark.skip(reason="Requires a desktop Qt display")
     def test_overlay_supports_hold_to_talk(self):
         """The microphone control can opt into press-and-hold behavior."""
