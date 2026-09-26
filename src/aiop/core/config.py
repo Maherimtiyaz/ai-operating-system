@@ -43,7 +43,7 @@ class WindowsConfig:
     start_on_boot: bool = True
     run_in_tray: bool = True
     minimize_to_tray: bool = True
-    hold_to_talk: bool = False
+    hold_to_talk: bool = True
     
 
 @dataclass

@@ -12,12 +12,18 @@ from .main_window import MainWindow, get_main_window
 from .overlay import get_overlay
 from .overlay import OverlayState
 from ..speech import get_transcriber
-from ..windows import register_hotkey, get_hotkey_manager
+from ..windows import register_hotkey, get_hotkey_manager, get_win32_api
 from ..windows import ActionRouter
 from ..core import config
 from .onboarding import OnboardingDialog
 
 logger = logging.get_logger(__name__)
+
+TRANSCRIPTION_STATUS_MESSAGES = {
+    "no_speech": "I didn't hear anything. Hold the shortcut and speak.",
+    "too_short": "That was too short. Keep speaking a little longer.",
+    "transcription_error": "I couldn't transcribe that. Please try again.",
+}
 
 
 class TrayApp(QObject):
@@ -43,6 +49,7 @@ class TrayApp(QObject):
         self._hold_poll_timer = QTimer(self)
         self._hold_poll_timer.setInterval(30)
         self._hold_poll_timer.timeout.connect(self._poll_hold_to_talk)
+        self._dictation_target_window = None
         self.transcriber = get_transcriber()
         self.action_router = ActionRouter()
         
@@ -102,8 +109,10 @@ class TrayApp(QObject):
         if self.transcriber.is_running():
             return
         try:
+            self._dictation_target_window = get_win32_api().get_foreground_window()
             self.transcriber.start()
         except Exception as error:
+            self._dictation_target_window = None
             logger.error("Could not start dictation: %s", error)
             self.overlay.set_feedback("Microphone unavailable", success=False)
             return
@@ -124,20 +133,24 @@ class TrayApp(QObject):
         if not result.is_final:
             self.overlay.set_partial_text(result.text)
             return
-        if not result.text:
-            messages = {
-                "no_speech": "No speech detected",
-                "too_short": "Keep speaking a little longer",
-                "transcription_error": "Could not transcribe audio",
-            }
-            self.overlay.set_feedback(messages.get(result.status, "No speech detected"), success=False)
+        if not result.text or not result.text.strip():
+            message = TRANSCRIPTION_STATUS_MESSAGES.get(
+                result.status,
+                "I didn't hear anything. Hold the shortcut and speak.",
+            )
+            self._dictation_target_window = None
+            self.overlay.set_feedback(message, success=False)
             return
         self.overlay.set_state(OverlayState.PROCESSING, "Transcribing")
         self.app.processEvents()
         if self.action_router.FILE_MANAGER_PATTERN.search(result.text):
             self.overlay.set_state(OverlayState.PROCESSING, "Opening File Manager")
             self.app.processEvents()
-        action_result = self.action_router.route(result.text)
+        action_result = self.action_router.route(
+            result.text,
+            target_window=self._dictation_target_window,
+        )
+        self._dictation_target_window = None
         self.overlay.set_feedback(action_result.message, action_result.success)
 
     def _queue_transcription_result(self, result) -> None:

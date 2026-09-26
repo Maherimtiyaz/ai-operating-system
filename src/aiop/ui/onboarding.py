@@ -32,9 +32,9 @@ class OnboardingDialog(QDialog):
 
         steps = QLabel(
             "1. Focus a text field\n"
-            "2. Press Ctrl+Shift+Space\n"
+            "2. Press and hold Ctrl+Shift+Space\n"
             "3. Speak naturally\n"
-            "4. Press the shortcut again to insert the result"
+            "4. Release the shortcut to finish"
         )
         steps.setStyleSheet("color: #d9dde3; line-height: 1.4; margin-bottom: 8px;")
         layout.addWidget(steps)

@@ -28,8 +28,8 @@ class ActionRouter:
         re.IGNORECASE,
     )
 
-    def route(self, text: str) -> ActionResult:
-        """Perform a known action or insert text into the focused app."""
+    def route(self, text: str, target_window: int = None) -> ActionResult:
+        """Perform a known action or insert text into the captured target app."""
         normalized = text.strip()
         if not normalized:
             return ActionResult(False, False, "No speech recognized")
@@ -45,7 +45,8 @@ class ActionRouter:
         try:
             clipboard = get_clipboard()
             win32 = get_win32_api()
-            target_window = win32.get_foreground_window()
+            if target_window is None:
+                target_window = win32.get_foreground_window()
             if not target_window:
                 return ActionResult(True, False, "No focused application")
             if not clipboard.set_text(normalized):

@@ -282,6 +282,10 @@ class SettingsDialog(QDialog):
         self._win_minimize_to_tray = QCheckBox("Minimize to tray instead of closing")
         self._win_minimize_to_tray.setStyleSheet("QCheckBox { color: #e0e0e0; }")
         startup_layout.addWidget(self._win_minimize_to_tray)
+
+        self._win_hold_to_talk = QCheckBox("Press and hold dictation shortcut to talk")
+        self._win_hold_to_talk.setStyleSheet("QCheckBox { color: #e0e0e0; }")
+        startup_layout.addWidget(self._win_hold_to_talk)
         
         layout.addWidget(startup_group)
         layout.addStretch()
@@ -429,6 +433,7 @@ class SettingsDialog(QDialog):
         self._win_start_on_boot.setChecked(self._config.windows.start_on_boot)
         self._win_run_in_tray.setChecked(self._config.windows.run_in_tray)
         self._win_minimize_to_tray.setChecked(self._config.windows.minimize_to_tray)
+        self._win_hold_to_talk.setChecked(self._config.windows.hold_to_talk)
         
         # Advanced
         self._ai_default_model.setText(self._config.ai.default_model)
@@ -482,6 +487,7 @@ class SettingsDialog(QDialog):
             self._config.windows.start_on_boot = self._win_start_on_boot.isChecked()
             self._config.windows.run_in_tray = self._win_run_in_tray.isChecked()
             self._config.windows.minimize_to_tray = self._win_minimize_to_tray.isChecked()
+            self._config.windows.hold_to_talk = self._win_hold_to_talk.isChecked()
             
             # Advanced
             self._config.ai.default_model = self._ai_default_model.text()
