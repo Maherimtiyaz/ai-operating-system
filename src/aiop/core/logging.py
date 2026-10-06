@@ -29,13 +29,13 @@ class AIOPLogger:
     def __init__(
         self,
         name: str,
-        log_dir: str = "logs",
+        log_dir: Optional[str] = None,
         log_level: str = "INFO",
         max_bytes: int = 10 * 1024 * 1024,  # 10MB
         backup_count: int = 5,
     ):
         self.name = name
-        self.log_dir = Path(log_dir)
+        self.log_dir = Path(log_dir) if log_dir else default_log_dir()
         self.log_level = LOG_LEVELS.get(log_level.upper(), logging.INFO)
         self.max_bytes = max_bytes
         self.backup_count = backup_count
@@ -102,6 +102,23 @@ def get_logger(name: str = "aiop") -> logging.Logger:
     return _logger.get_logger()
 
 
+def default_log_dir() -> Path:
+    """Return the per-user log directory.
+
+    Computed inline rather than via core.utils because utils imports this
+    module, so the dependency cannot be reversed at import time.
+    """
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA")
+        if not base:
+            base = str(Path.home() / "AppData" / "Roaming")
+    elif sys.platform == "darwin":
+        base = str(Path.home() / "Library" / "Application Support")
+    else:
+        base = str(Path.home() / ".config")
+    return Path(base) / "aiop" / "logs"
+
+
 def set_log_level(level: str):
     """Set the global log level"""
     global _logger
@@ -112,7 +129,7 @@ def set_log_level(level: str):
 
 
 def setup_logging(
-    log_dir: str = "logs",
+    log_dir: Optional[str] = None,
     log_level: str = "INFO",
     max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 5,

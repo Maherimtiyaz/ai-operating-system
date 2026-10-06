@@ -4,7 +4,6 @@ Utility functions for AIOP
 
 import os
 import sys
-import time
 import hashlib
 import json
 import platform
@@ -37,9 +36,68 @@ def get_cache_dir(app_name: str = "aiop") -> Path:
         return Path.home() / ".cache" / app_name
 
 
+def is_frozen() -> bool:
+    """True when running from a packaged executable rather than a checkout."""
+    return bool(getattr(sys, "frozen", False))
+
+
+def get_project_root() -> Path:
+    """Return the directory that ships the bundled assets.
+
+    In a checkout this is the repository root
+    (src/aiop/core/utils.py -> src/aiop/core -> src/aiop -> src -> root).
+    In a packaged build it is the folder next to the executable, where the
+    build layout puts the read-only `models` and `config` directories next to
+    the app so they stay transparent to users.
+    """
+    if is_frozen():
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[3]
+
+
 def get_models_dir() -> Path:
-    """Get the models directory"""
+    """Get the writable models directory used for downloads"""
     return get_app_data_dir() / "models"
+
+
+def get_bundled_models_dir() -> Path:
+    """Get the read-only models directory shipped with the application."""
+    if is_frozen():
+        # PyInstaller onedir keeps assets in _internal EXCEPT those the build
+        # copies next to the executable. Accept both so either layout works.
+        candidates = [get_project_root() / "models"]
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "models")
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return candidates[0]
+    return get_project_root() / "models"
+
+
+def get_model_search_dirs() -> List[Path]:
+    """Return model directories in priority order.
+
+    Bundled models win so a fresh checkout works before anything is
+    downloaded, and the writable app-data directory is the fallback target
+    for `download_model`.
+    """
+    dirs = [get_bundled_models_dir(), get_models_dir()]
+    unique: List[Path] = []
+    for directory in dirs:
+        if directory not in unique:
+            unique.append(directory)
+    return unique
+
+
+def find_in_model_dirs(file_name: str) -> Optional[Path]:
+    """Locate a file in any known models directory"""
+    for directory in get_model_search_dirs():
+        candidate = directory / file_name
+        if candidate.exists():
+            return candidate
+    return None
 
 
 def get_plugins_dir() -> Path:

@@ -2,12 +2,11 @@
 Configuration management for AIOP
 """
 
-import os
 import yaml
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass, field
-from . import logging
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field, fields
+from . import logging, utils
 
 logger = logging.get_logger(__name__)
 
@@ -26,7 +25,6 @@ class AudioConfig:
 class SpeechConfig:
     """Speech recognition configuration"""
     model_path: str = "models/ggml-base.en.bin"
-    model_type: str = "whisper-1"
     language: str = "en"
     beam_size: int = 5
     temperature: float = 0.0
@@ -55,6 +53,11 @@ class AIConfig:
     max_context: int = 4096
     temperature: float = 0.7
     top_p: float = 0.9
+    # OpenAI-compatible endpoint for workflow prompt steps. The API key is
+    # always user-supplied: it defaults empty, is never shipped, and can come
+    # from the OPENAI_API_KEY environment variable instead.
+    api_key: str = ""
+    base_url: str = "https://api.openai.com/v1"
     
 
 @dataclass
@@ -123,8 +126,10 @@ class AIOPConfig:
 class ConfigManager:
     """Configuration manager for AIOP"""
     
-    def __init__(self, config_dir: str = "config", config_name: str = "config.yaml"):
-        self.config_dir = Path(config_dir)
+    def __init__(self, config_dir: Optional[str] = None, config_name: str = "config.yaml"):
+        # Defaults to the per-user config directory so settings resolve the
+        # same regardless of the working directory the app was launched from.
+        self.config_dir = Path(config_dir) if config_dir else utils.get_config_dir()
         self.config_name = config_name
         self.config_path = self.config_dir / config_name
         self.config: AIOPConfig = AIOPConfig()
@@ -141,28 +146,58 @@ class ConfigManager:
             except Exception as e:
                 logger.error(f"Failed to load config: {e}")
         else:
+            self._seed_config_from_template()
             self._save_config()
+
+    def _seed_config_from_template(self) -> None:
+        """Adopt the bundled config template on first run.
+
+        Keeps existing settings such as the onboarding profile when the app is
+        first run from a checkout that ships a populated config.yaml.
+        """
+        template_path = utils.get_project_root() / "config" / self.config_name
+        if not template_path.exists():
+            return
+        try:
+            with open(template_path, 'r', encoding='utf-8') as f:
+                config_data = yaml.safe_load(f)
+            if config_data:
+                self._update_config(config_data)
+                logger.info("Seeded configuration from %s", template_path)
+        except Exception as e:
+            logger.error(f"Failed to seed config from template: {e}")
     
     def _update_config(self, config_data: Dict[str, Any]) -> None:
-        """Update configuration from dictionary"""
-        if 'audio' in config_data:
-            self.config.audio = AudioConfig(**config_data['audio'])
-        if 'speech' in config_data:
-            self.config.speech = SpeechConfig(**config_data['speech'])
-        if 'windows' in config_data:
-            self.config.windows = WindowsConfig(**config_data['windows'])
-        if 'ai' in config_data:
-            self.config.ai = AIConfig(**config_data['ai'])
-        if 'automation' in config_data:
-            self.config.automation = AutomationConfig(**config_data['automation'])
-        if 'plugin' in config_data:
-            self.config.plugin = PluginConfig(**config_data['plugin'])
-        if 'mcp' in config_data:
-            self.config.mcp = MCPConfig(**config_data['mcp'])
-        if 'ui' in config_data:
-            self.config.ui = UIConfig(**config_data['ui'])
-        if 'profile' in config_data:
-            self.config.profile = ProfileConfig(**config_data['profile'])
+        """Update configuration from dictionary.
+
+        Keys the current build no longer defines are dropped rather than
+        raising, so a config written by an older or newer version still loads.
+        """
+        sections = {
+            'audio': AudioConfig,
+            'speech': SpeechConfig,
+            'windows': WindowsConfig,
+            'ai': AIConfig,
+            'automation': AutomationConfig,
+            'plugin': PluginConfig,
+            'mcp': MCPConfig,
+            'ui': UIConfig,
+            'profile': ProfileConfig,
+        }
+        for name, section_type in sections.items():
+            values = config_data.get(name)
+            if not isinstance(values, dict):
+                continue
+            known = {item.name for item in fields(section_type)}
+            unknown = [key for key in values if key not in known]
+            if unknown:
+                logger.warning(
+                    "Ignoring unknown '%s' config keys: %s",
+                    name,
+                    ", ".join(sorted(unknown)),
+                )
+                values = {key: value for key, value in values.items() if key in known}
+            setattr(self.config, name, section_type(**values))
     
     def _save_config(self) -> None:
         """Save configuration to file"""
