@@ -2,16 +2,14 @@
 Settings dialog for AIOP
 """
 
-import sys
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, 
     QLabel, QComboBox, QSpinBox, QCheckBox, QLineEdit, 
     QPushButton, QGroupBox, QFormLayout, QFileDialog, QMessageBox,
-    QSlider, QFontComboBox
+    QSlider
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from ..core import config, logging
 from ..audio import get_audio_devices
 
@@ -64,6 +62,7 @@ class SettingsDialog(QDialog):
         # Create tabs
         self._tab_widget.addTab(self._create_audio_tab(), "Audio")
         self._tab_widget.addTab(self._create_speech_tab(), "Speech")
+        self._tab_widget.addTab(self._create_ai_tab(), "AI")
         self._tab_widget.addTab(self._create_ui_tab(), "Interface")
         self._tab_widget.addTab(self._create_windows_tab(), "Windows Integration")
         self._tab_widget.addTab(self._create_advanced_tab(), "Advanced")
@@ -204,8 +203,69 @@ class SettingsDialog(QDialog):
         temp_layout.addWidget(self._speech_temp_label)
         layout.addRow("Temperature:", temp_layout)
         
+        # One-click download for machines that do not ship the weights yet.
+        self._speech_download_btn = QPushButton("Download Model…")
+        self._speech_download_btn.setStyleSheet(
+            "QPushButton { background-color: #2a82e4; color: white; border: none; border-radius: 4px; padding: 6px 10px; }"
+            "QPushButton:hover { background-color: #3d92f5; }"
+        )
+        self._speech_download_btn.clicked.connect(self._download_model)
+        layout.addRow("Get model:", self._speech_download_btn)
+        
         return widget
     
+    def _download_model(self) -> None:
+        from ..speech.model_manager import get_model_manager
+        from .model_download import ModelDownloadDialog, default_model_name
+
+        manager = get_model_manager()
+        name = default_model_name()
+        if not manager.get_model(name):
+            name = "base.en"
+        model = manager.get_model(name)
+        if not model:
+            QMessageBox.warning(
+                self, "No model available",
+                "AIOP does not know how to download the configured model.",
+            )
+            return
+        dialog = ModelDownloadDialog(model_name=name, file_size=model.file_size, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            path = manager.get_model_path(name)
+            if path:
+                self._speech_model_path.setText(str(path))
+    
+    def _create_ai_tab(self) -> QWidget:
+        """Create AI settings tab used by workflow prompt steps."""
+        widget = QWidget()
+        layout = QFormLayout(widget)
+        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        layout.setSpacing(10)
+
+        api_note = QLabel(
+            "<b>Bring your own key.</b> AIOP never ships one. Keys are stored in "
+            "your local config and only sent to the endpoint you configure. "
+            "The OPENAI_API_KEY environment variable is used as a fallback."
+        )
+        api_note.setStyleSheet("color: #a0a0a0; font-size: 11px;")
+        api_note.setWordWrap(True)
+        layout.addRow(api_note)
+
+        self._ai_api_key = QLineEdit()
+        self._ai_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self._ai_api_key.setStyleSheet("QLineEdit { background-color: #252525; color: #e0e0e0; border: 1px solid #404040; border-radius: 4px; padding: 4px; }")
+        layout.addRow("OpenAI API Key:", self._ai_api_key)
+
+        self._ai_base_url = QLineEdit()
+        self._ai_base_url.setStyleSheet("QLineEdit { background-color: #252525; color: #e0e0e0; border: 1px solid #404040; border-radius: 4px; padding: 4px; }")
+        layout.addRow("Base URL:", self._ai_base_url)
+
+        self._ai_model = QLineEdit()
+        self._ai_model.setStyleSheet("QLineEdit { background-color: #252525; color: #e0e0e0; border: 1px solid #404040; border-radius: 4px; padding: 4px; }")
+        layout.addRow("Default Model:", self._ai_model)
+
+        return widget
+
     def _create_ui_tab(self) -> QWidget:
         """Create UI settings tab"""
         widget = QWidget()
@@ -440,6 +500,11 @@ class SettingsDialog(QDialog):
         self._ai_max_context.setValue(self._config.ai.max_context)
         self._plugin_auto_load.setChecked(self._config.plugin.auto_load)
         self._plugin_sandbox.setChecked(self._config.plugin.sandbox_enabled)
+
+        # AI tab
+        self._ai_api_key.setText(self._config.ai.api_key)
+        self._ai_base_url.setText(self._config.ai.base_url)
+        self._ai_model.setText(self._config.ai.default_model)
     
     def _save_settings(self) -> bool:
         """Save settings from UI controls"""
@@ -494,7 +559,16 @@ class SettingsDialog(QDialog):
             self._config.ai.max_context = self._ai_max_context.value()
             self._config.plugin.auto_load = self._plugin_auto_load.isChecked()
             self._config.plugin.sandbox_enabled = self._plugin_sandbox.isChecked()
-            
+
+            # AI tab
+            self._config.ai.api_key = self._ai_api_key.text().strip()
+            self._config.ai.base_url = self._ai_base_url.text().strip()
+            self._config.ai.default_model = self._ai_model.text().strip()
+            if self._config.ai.api_key or self._config.ai.base_url:
+                from ..automation.engine import reset_llm_client_cache
+
+                reset_llm_client_cache()
+
             # Save to file
             self._config_manager._save_config()
             

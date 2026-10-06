@@ -2,20 +2,16 @@
 Main window for AIOP - Redesigned with modern WhisperFlow-inspired UI
 """
 
-import sys
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
-    QPushButton, QLabel, QTextEdit, QSystemTrayIcon, QMenu, QApplication,
-    QFrame, QScrollArea, QSizePolicy, QSpacerItem, QGraphicsOpacityEffect
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QTextEdit, QSystemTrayIcon, QMenu, QFrame, QGraphicsOpacityEffect
 )
-from PyQt6.QtGui import QIcon, QAction, QFont, QColor, QPalette, QLinearGradient, QPainter
-from PyQt6.QtCore import Qt, QSize, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty
-from typing import Optional, Callable
+from PyQt6.QtGui import QIcon, QAction, QFont
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, pyqtProperty
+from typing import Optional
 from ..core import logging, config
 from ..speech import SpeechTranscriber, TranscriptionResult
-from ..windows import get_clipboard, get_win32_api
+from ..windows import get_clipboard
 from .overlay import DictationOverlay, get_overlay
-from .styles import apply_theme, Colors
 from .settings_dialog import SettingsDialog
 
 logger = logging.get_logger(__name__)
@@ -440,9 +436,14 @@ class MainWindow(QMainWindow):
         stop_action.triggered.connect(self.on_stop_dictation)
         stop_action.setEnabled(False)
         tray_menu.addAction(stop_action)
-        
+
         tray_menu.addSeparator()
-        
+
+        # Workflows action
+        workflows_action = QAction("Workflows…", self)
+        workflows_action.triggered.connect(self._open_workflows)
+        tray_menu.addAction(workflows_action)
+
         # Settings action
         settings_action = QAction("Settings", self)
         settings_action.triggered.connect(self.on_settings)
@@ -594,6 +595,15 @@ class MainWindow(QMainWindow):
                 logger.error(f"Error copying to clipboard: {e}")
                 self._status_label.setText("Error copying to clipboard")
     
+    def _open_workflows(self) -> None:
+        """Open the workflow editor dialog."""
+        from .workflow_editor import open_workflows_dialog
+
+        try:
+            open_workflows_dialog(self)
+        except Exception as e:
+            logger.error(f"Error opening workflows: {e}")
+
     def on_settings(self) -> None:
         """Open settings dialog"""
         try:
