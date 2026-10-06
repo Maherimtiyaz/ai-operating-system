@@ -82,7 +82,6 @@ audio:
 
 speech:
   model_path: models/ggml-base.en.bin
-  model_type: whisper-1
   language: en
   use_vad: true
   vad_aggressiveness: 3

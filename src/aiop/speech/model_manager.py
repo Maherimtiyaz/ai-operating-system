@@ -2,14 +2,13 @@
 Model management for speech recognition
 """
 
-import os
 import hashlib
 import requests
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from dataclasses import dataclass
 from ..core import logging, utils
-from .language import LanguageInfo, get_language, LANGUAGES
+from .language import LANGUAGES
 
 logger = logging.get_logger(__name__)
 
@@ -180,8 +179,13 @@ class ModelManager:
         },
     }
     
-    def __init__(self, models_dir: str = "models"):
-        self.models_dir = Path(models_dir)
+    def __init__(self, models_dir: Optional[str] = None):
+        # Downloads must land in writable storage; lookups span both the
+        # bundled and the app-data directories.
+        self.models_dir = Path(models_dir) if models_dir else utils.get_models_dir()
+        self.search_dirs = (
+            [self.models_dir] if models_dir else utils.get_model_search_dirs()
+        )
         self.models: Dict[str, ModelInfo] = {}
         self.local_models: Dict[str, LocalModel] = {}
         self._load_model_definitions()
@@ -207,19 +211,53 @@ class ModelManager:
     
     def _scan_local_models(self) -> None:
         """Scan for locally available models"""
-        if not self.models_dir.exists():
-            self.models_dir.mkdir(parents=True, exist_ok=True)
-            return
-        
+        for directory in self.search_dirs:
+            directory.mkdir(parents=True, exist_ok=True)
+
         for model_name, model_info in self.models.items():
-            model_path = self.models_dir / model_info.file_name
-            if model_path.exists():
+            model_path = self._find_model_file(model_info)
+            if model_path is None:
+                continue
+            if self._is_usable_model_file(model_path, model_info):
                 self.local_models[model_name] = LocalModel(
                     path=model_path,
                     info=model_info,
                     is_downloaded=True,
                     is_loaded=False,
                 )
+            else:
+                logger.warning(
+                    "Ignoring incomplete model file %s (%d bytes, expected ~%s)",
+                    model_path,
+                    model_path.stat().st_size,
+                    utils.format_bytes(model_info.file_size),
+                )
+
+    def _find_model_file(self, model_info: ModelInfo) -> Optional[Path]:
+        """Return the first existing copy of a model across search dirs."""
+        for directory in self.search_dirs:
+            candidate = directory / model_info.file_name
+            if candidate.exists():
+                return candidate
+        return None
+
+    @staticmethod
+    def _is_usable_model_file(model_path: Path, model_info: ModelInfo) -> bool:
+        """A model is only usable when it is non-empty and plausibly sized.
+
+        Interrupted downloads leave 0-byte or truncated .bin files behind, and
+        treating those as ready makes Whisper fail at load time instead of
+        triggering a re-download.
+        """
+        try:
+            size = model_path.stat().st_size
+        except OSError:
+            return False
+        if size == 0:
+            return False
+        # Whisper models are >90% quantized or FP16; anything under 50% of the
+        # documented size is a partial file.
+        return size >= model_info.file_size * 0.5
     
     def list_models(self) -> List[ModelInfo]:
         """List all available models"""
@@ -264,29 +302,35 @@ class ModelManager:
         try:
             self.models_dir.mkdir(parents=True, exist_ok=True)
             model_path = self.models_dir / model_info.file_name
-            
+            partial_path = self.models_dir / f"{model_info.file_name}.part"
+
             logger.info(f"Downloading model: {model_name} ({utils.format_bytes(model_info.file_size)})")
-            
-            # Download with progress
-            response = requests.get(model_info.url, stream=True)
+
+            # Download to a .part file so an interrupt can never leave the
+            # final name holding a truncated model that the 50% size scan
+            # would mistake for a valid download.
+            response = requests.get(model_info.url, stream=True, timeout=60)
             response.raise_for_status()
-            
+
             total_size = int(response.headers.get('content-length', 0))
             downloaded = 0
-            
-            with open(model_path, 'wb') as f:
+
+            with open(partial_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)
                         if progress_callback:
                             progress_callback(downloaded, total_size)
-            
-            # Verify checksum
-            if not self._verify_checksum(model_path, model_info.sha256):
+
+            # Verify checksum before the file becomes visible to model scans.
+            if not self._verify_checksum(partial_path, model_info.sha256):
                 logger.error(f"Checksum verification failed for {model_name}")
-                model_path.unlink()
+                partial_path.unlink(missing_ok=True)
                 return False
+            if model_path.exists():
+                model_path.unlink()
+            partial_path.replace(model_path)
             
             # Add to local models
             self.local_models[model_name] = LocalModel(
@@ -301,6 +345,8 @@ class ModelManager:
             
         except Exception as e:
             logger.error(f"Failed to download model {model_name}: {e}")
+            if partial_path.exists():
+                partial_path.unlink(missing_ok=True)
             return False
     
     def _verify_checksum(self, file_path: Path, expected_sha256: str) -> bool:
@@ -335,14 +381,20 @@ class ModelManager:
         local_model = self.local_models.get(model_name)
         if local_model:
             return local_model.path
-        
-        # Check if file exists directly
+
+        # Re-check the filesystem: a model may have landed since the last scan.
         model_info = self.models.get(model_name)
         if model_info:
-            model_path = self.models_dir / model_info.file_name
-            if model_path.exists():
+            model_path = self._find_model_file(model_info)
+            if model_path and self._is_usable_model_file(model_path, model_info):
+                self.local_models[model_name] = LocalModel(
+                    path=model_path,
+                    info=model_info,
+                    is_downloaded=True,
+                    is_loaded=False,
+                )
                 return model_path
-        
+
         return None
     
     def get_best_model_for_language(self, language_code: str) -> Optional[str]:
@@ -398,5 +450,36 @@ def download_model(model_name: str, progress_callback: callable = None) -> bool:
 
 
 def get_model_path(model_name: str) -> Optional[Path]:
-    """Get path to a model file"""
+    """Get the path to a model file"""
     return get_model_manager().get_model_path(model_name)
+
+
+def resolve_model_path(value: Optional[str]) -> Optional[Path]:
+    """Resolve a configured model value to a concrete file.
+
+    Accepts a bare model name ("base.en"), a bundled-style relative path
+    ("models/ggml-base.en.bin"), or an absolute path, and searches every known
+    model directory so a relative value works from any working directory.
+    """
+    if not value:
+        return None
+
+    candidate = Path(value).expanduser()
+    if candidate.is_absolute() and candidate.exists():
+        return candidate
+
+    # Try the value verbatim against each known model directory.
+    for directory in get_model_manager().search_dirs:
+        for attempt in (directory / candidate, directory / candidate.name):
+            if attempt.exists():
+                return attempt
+
+    # Fall back to treating it as a model name ("base.en").
+    manager = get_model_manager()
+    model_info = manager.models.get(value.strip())
+    if model_info:
+        model_path = manager._find_model_file(model_info)
+        if model_path and manager._is_usable_model_file(model_path, model_info):
+            return model_path
+
+    return None

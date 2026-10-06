@@ -3,14 +3,48 @@
 Main entry point for AI Operating Platform
 """
 
-import sys
 import os
-from pathlib import Path
-from typing import Optional
+import sys
+import ctypes
+import traceback
 from .core import logging, config, utils
-from .ui import TrayApp, run_tray_app
+from .ui import run_tray_app
 
 logger = logging.get_logger(__name__)
+
+ERROR_ALREADY_EXISTS = 183
+_instance_mutex: object = None
+
+
+def acquire_single_instance_lock() -> bool:
+    """Hold a named mutex for the lifetime of this process.
+
+    A second launch used to fail later with Windows error 1409 because the
+    hotkeys and tray icon were already owned by the first instance.
+    """
+    global _instance_mutex
+
+    if os.name != "nt":
+        return True
+    if _instance_mutex is not None:
+        return True
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_wchar_p]
+    # HANDLE is a pointer; the default c_int restype truncates it on x64.
+    kernel32.CreateMutexW.restype = ctypes.c_void_p
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel32.CloseHandle.restype = ctypes.c_int
+
+    handle = kernel32.CreateMutexW(None, False, "Local\\AIOP_SingleInstance")
+    if not handle:
+        logger.warning("Could not create instance mutex (error %s)", ctypes.get_last_error())
+        return True
+    if ctypes.get_last_error() == ERROR_ALREADY_EXISTS:
+        kernel32.CloseHandle(handle)
+        return False
+    _instance_mutex = handle
+    return True
 
 
 def setup_environment() -> None:
@@ -24,7 +58,7 @@ def setup_environment() -> None:
     
     # Load configuration
     config_dir = utils.get_config_dir()
-    config_manager = config.get_config_manager()
+    config.get_config_manager()
     
     logger.info("AI Operating Platform starting...")
     logger.info(f"Config directory: {config_dir}")
@@ -56,28 +90,77 @@ def check_dependencies() -> bool:
 
 
 def check_whisper_library() -> bool:
-    """Check if whisper.cpp library is available"""
-    try:
-        # Try the Python whispercpp package first (easier to install)
-        import whispercpp
-        from whispercpp import api_cpp2py_export  # noqa: F401
-        logger.info("whispercpp Python package is available")
-        return True
-    except ImportError:
-        pass
-    
-    # Fall back to checking for the C++ library
+    """Check for a usable whisper.cpp backend and report which one it is."""
     try:
         from .speech.whisper_cpp import WhisperCPP
-        whisper = WhisperCPP()
-        return True
-    except Exception as e:
-        logger.warning(f"whisper.cpp library not available: {e}")
+    except Exception as error:
+        logger.warning("whisper backend unavailable: %s", error)
         return False
+
+    try:
+        whisper = WhisperCPP()
+    except Exception as error:
+        logger.warning("whisper.cpp library not available: %s", error)
+        print("Speech transcription is unavailable: whisper.dll was not found.")
+        print("Place whisper.dll, ggml.dll, ggml-cpu-*.dll and ggml-base.en.bin in models/.")
+        return False
+
+    if whisper.lib is None and whisper.cli_path is None:
+        logger.warning("Neither whisper.dll nor whisper-cli.exe is usable")
+        print("Speech transcription is unavailable: no usable whisper backend in models/.")
+        print("Place whisper.dll and its ggml-*.dll dependencies in models/.")
+        return False
+
+    logger.info("whisper backend: %s", "whisper.dll" if whisper.lib else "whisper-cli.exe")
+    return True
+
+
+def diagnostic_report() -> int:
+    """Print the resolved runtime paths and exit, for packaged-build support."""
+    from .core import utils as path_util
+    from .speech import model_manager
+
+    print("frozen:", path_util.is_frozen())
+    print("python:", sys.version.split()[0])
+    print("application dir:", path_util.get_project_root())
+    print("bundled models:", path_util.get_bundled_models_dir())
+    print("writable models:", path_util.get_models_dir())
+    print("config dir:", path_util.get_config_dir())
+
+    manager = model_manager.get_model_manager()
+    for name in ("base.en", "tiny.en", "base"):
+        model = manager.get_model(name)
+        if not model:
+            continue
+        local = manager.get_model_path(name)
+        print(f"model[{name}]: {local if local else 'not downloaded'}")
+
+    print("backend: ", end="")
+    try:
+        from .speech.whisper_cpp import WhisperCPP
+
+        whisper = WhisperCPP()
+        if whisper.lib is not None:
+            print("whisper.dll")
+        elif whisper.cli_path is not None:
+            print("whisper-cli.exe")
+        else:
+            print("none")
+    except Exception as error:
+        print(f"unavailable ({error})")
+    return 0
 
 
 def main() -> int:
     """Main entry point"""
+    if any(flag in sys.argv for flag in ("--check", "-c")):
+        return diagnostic_report()
+
+    if not acquire_single_instance_lock():
+        logger.info("Another instance is already running; exiting")
+        print("AI Operating Platform is already running.")
+        return 0
+
     # Setup environment
     setup_environment()
     
@@ -88,19 +171,13 @@ def main() -> int:
         return 1
     
     # Check whisper library
-    if not check_whisper_library():
-        print("Note: whisper.cpp library not found.")
-        print("Speech transcription features will be limited.")
-        print("To enable full speech features, install whispercpp:")
-        print("  pip install whispercpp")
-        print("Or download whisper.cpp from https://github.com/ggerganov/whisper.cpp")
+    check_whisper_library()
     
     # Run application
     try:
         return run_tray_app()
     except Exception as e:
         logger.error(f"Application error: {e}")
-        import traceback
         traceback.print_exc()
         return 1
 

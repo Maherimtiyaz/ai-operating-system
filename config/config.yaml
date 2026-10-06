@@ -30,11 +30,14 @@ plugin:
   auto_load: true
   plugins_dir: plugins
   sandbox_enabled: true
+profile:
+  completed: true
+  email: mahimaher343@gmail.com
+  name: Mahi
 speech:
   beam_size: 5
   language: en
   model_path: models/ggml-base.en.bin
-  model_type: whisper-1
   temperature: 0.0
   use_vad: true
   vad_aggressiveness: 3
@@ -52,3 +55,4 @@ windows:
   minimize_to_tray: true
   run_in_tray: true
   start_on_boot: true
+  hold_to_talk: true
