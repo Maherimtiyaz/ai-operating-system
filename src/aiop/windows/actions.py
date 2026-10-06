@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 from dataclasses import dataclass
 
 from ..core import logging
@@ -9,6 +10,11 @@ from .clipboard import get_clipboard
 from .win32_api import VirtualKey, get_win32_api
 
 logger = logging.get_logger(__name__)
+
+# Windows refuses SetForegroundWindow focus changes that happen in the same
+# tick as the user gesture. A short settle delay lets the target app take
+# focus before we synthesize the paste.
+PASTE_SETTLE_SECONDS = 0.12
 
 
 @dataclass
@@ -54,10 +60,31 @@ class ActionRouter:
 
             if not win32.set_foreground_window(target_window):
                 return ActionResult(True, False, "Could not restore focused application")
-            win32._send_key_down(VirtualKey.VK_CONTROL.value)
-            win32._send_key(VirtualKey.VK_V.value)
-            win32._send_key_up(VirtualKey.VK_CONTROL.value)
+            time.sleep(PASTE_SETTLE_SECONDS)
+            win32.send_vk_combo(
+                VirtualKey.VK_CONTROL.value,
+                VirtualKey.VK_V.value,
+            )
             return ActionResult(True, True, "Dictation inserted")
         except Exception as error:
             logger.error("Failed to insert dictation: %s", error)
             return ActionResult(True, False, "Could not insert dictation")
+
+
+def paste_into_foreground(text: str, settle_seconds: float = PASTE_SETTLE_SECONDS) -> None:
+    """Insert text into the currently focused window via clipboard + Ctrl+V.
+
+    Raises an OSError-backed exception when there is no focused window or the
+    focus cannot be restored.
+    """
+    win32 = get_win32_api()
+    target_window = win32.get_foreground_window()
+    if not target_window:
+        raise RuntimeError("No focused application to paste into")
+    clipboard = get_clipboard()
+    if not clipboard.set_text(text):
+        raise RuntimeError("Could not copy text to the clipboard")
+    if not win32.set_foreground_window(target_window):
+        raise RuntimeError("Could not restore focus to paste into")
+    time.sleep(settle_seconds)
+    win32.send_vk_combo(VirtualKey.VK_CONTROL.value, VirtualKey.VK_V.value)
