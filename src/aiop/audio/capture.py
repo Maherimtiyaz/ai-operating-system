@@ -4,14 +4,41 @@ Audio capture for AIOP
 
 import time
 import pyaudio
-import numpy as np
-from typing import Generator, Optional, Callable, Any, List
+from typing import Generator, Optional, Callable, List
 from dataclasses import dataclass, field
 from enum import Enum
 from ..core import logging, exceptions
 from .devices import AudioDeviceInfo, get_audio_devices
 
 logger = logging.get_logger(__name__)
+
+_pyaudio_instance: Optional[pyaudio.PyAudio] = None
+
+
+def get_pyaudio() -> pyaudio.PyAudio:
+    """Return the process-wide PortAudio instance.
+
+    Constructing ``PyAudio`` costs ~280 ms because it boots the audio runtime
+    and enumerates every device. Building one per ``AudioStream`` both made
+    the first dictation sluggish and leaked an instance on every start/stop
+    cycle, since nothing ever called ``terminate()``.
+    """
+    global _pyaudio_instance
+    if _pyaudio_instance is None:
+        _pyaudio_instance = pyaudio.PyAudio()
+    return _pyaudio_instance
+
+
+def terminate_pyaudio() -> None:
+    """Release the shared PortAudio instance. Safe to call more than once."""
+    global _pyaudio_instance
+    if _pyaudio_instance is None:
+        return
+    try:
+        _pyaudio_instance.terminate()
+    except Exception as error:
+        logger.error("Error terminating PortAudio: %s", error)
+    _pyaudio_instance = None
 
 
 class AudioFormat(Enum):
@@ -53,7 +80,7 @@ class AudioStream:
     ):
         self.parameters = parameters
         self.callback = callback
-        self.pyaudio = pyaudio.PyAudio()
+        self.pyaudio = get_pyaudio()
         self.stream: Optional[pyaudio.Stream] = None
         self.is_running = False
         self._frames: list = []
@@ -147,9 +174,9 @@ class AudioStream:
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # The PortAudio instance is shared process-wide, so it is left open
+        # for the next stream. Use terminate_pyaudio() on shutdown.
         self.stop()
-        if self.pyaudio:
-            self.pyaudio.terminate()
 
 
 class AudioCapture:

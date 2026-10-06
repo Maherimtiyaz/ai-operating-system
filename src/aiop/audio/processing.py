@@ -11,6 +11,47 @@ from .capture import AudioChunk, AudioFormat
 
 logger = logging.get_logger(__name__)
 
+# Normalized amplitude thresholds (samples are decoded to [-1.0, 1.0]).
+# Measured against real captures: room noise floors near 0.0002 RMS, speech
+# medians near 0.07 RMS, so the bands below separate them by a wide margin.
+SILENCE_RMS = 0.001  # ~ -60 dBFS
+NOISE_RMS = 0.005    # ~ -46 dBFS
+
+_INT16_SCALE = 32768.0
+
+
+def _decode_samples(data: bytes, fmt: AudioFormat) -> np.ndarray:
+    """Decode PCM bytes to float32 samples normalized to [-1.0, 1.0].
+
+    Squaring int16 samples directly overflows the dtype, which silently
+    wraps to negative values and makes RMS NaN. Decoding once here keeps
+    every consumer on a single, consistent linear scale.
+    """
+    if fmt == AudioFormat.FLOAT32:
+        return np.frombuffer(data, dtype=np.float32).astype(np.float32)
+    if fmt == AudioFormat.INT8:
+        return np.frombuffer(data, dtype=np.int8).astype(np.float32) / 128.0
+    if fmt == AudioFormat.INT32:
+        return np.frombuffer(data, dtype=np.int32).astype(np.float32) / 2147483648.0
+    if fmt == AudioFormat.INT24:
+        if len(data) % 3:
+            data = data[: len(data) - (len(data) % 3)]
+        unpacked = np.frombuffer(data, dtype=np.uint8).reshape(-1, 3).astype(np.int32)
+        values = (unpacked[:, 0] | (unpacked[:, 1] << 8) | (unpacked[:, 2] << 16))
+        values = np.where(values & 0x800000, values - 0x1000000, values)
+        return values.astype(np.float32) / 8388608.0
+    # Default: little-endian signed 16-bit
+    return np.frombuffer(data, dtype=np.int16).astype(np.float32) / _INT16_SCALE
+
+
+def _rms_energy(samples: np.ndarray) -> Tuple[float, float]:
+    """Return (rms, energy) for normalized samples. Both are linear in [-1, 1]."""
+    if samples.size == 0:
+        return 0.0, 0.0
+    squared = samples.astype(np.float64) ** 2
+    energy = float(np.mean(squared))
+    return float(np.sqrt(energy)), energy
+
 
 @dataclass
 class VADConfig:
@@ -40,15 +81,20 @@ class VoiceActivityDetector:
         self.frame_duration_ms = self.config.frame_duration_ms
         self.frame_length = int(self.sample_rate * self.frame_duration_ms / 1000)
     
-    def is_speech(self, audio_chunk: AudioChunk) -> bool:
-        """Check if audio chunk contains speech"""
+    def is_speech(self, audio_chunk: AudioChunk | bytes) -> bool:
+        """Check if audio chunk contains speech.
+
+        Accepts either an :class:`AudioChunk` or raw little-endian int16 PCM.
+        """
         try:
-            # Convert to 16-bit PCM if needed
-            if audio_chunk.format != AudioFormat.INT16:
-                audio_data = self._convert_format(audio_chunk)
+            if isinstance(audio_chunk, AudioChunk):
+                if audio_chunk.format != AudioFormat.INT16:
+                    audio_data = self._convert_format(audio_chunk)
+                else:
+                    audio_data = audio_chunk.data
             else:
-                audio_data = audio_chunk.data
-            
+                audio_data = bytes(audio_chunk)
+
             # Check frame length
             if len(audio_data) < self.frame_length * 2:  # 2 bytes per sample for int16
                 # Pad with zeros if too short
@@ -71,37 +117,23 @@ class VoiceActivityDetector:
     
     def _convert_format(self, audio_chunk: AudioChunk) -> bytes:
         """Convert audio to 16-bit PCM"""
-        # Simplified conversion - in practice, use proper audio conversion
-        if audio_chunk.format == AudioFormat.FLOAT32:
-            # Convert float32 to int16
-            samples = np.frombuffer(audio_chunk.data, dtype=np.float32)
-            samples = np.clip(samples * 32767, -32768, 32767).astype(np.int16)
-            return samples.tobytes()
-        elif audio_chunk.format == AudioFormat.INT8:
-            # Convert int8 to int16
-            samples = np.frombuffer(audio_chunk.data, dtype=np.int8)
-            samples = (samples.astype(np.int16) * 256).tobytes()
-            return samples
-        else:
+        if audio_chunk.format == AudioFormat.INT16:
             return audio_chunk.data
+        samples = _decode_samples(audio_chunk.data, audio_chunk.format)
+        samples = np.clip(samples * 32767, -32768, 32767).astype(np.int16)
+        return samples.tobytes()
     
     def process(self, audio_chunk: AudioChunk) -> ProcessingResult:
         """Process audio chunk and return detailed result"""
         is_speech = self.is_speech(audio_chunk)
-        
-        # Calculate RMS
-        if audio_chunk.format == AudioFormat.INT16:
-            samples = np.frombuffer(audio_chunk.data, dtype=np.int16)
-        else:
-            samples = np.frombuffer(audio_chunk.data, dtype=np.float32)
-        
-        rms = np.sqrt(np.mean(samples ** 2))
-        energy = np.sum(samples ** 2) / len(samples)
-        
+
+        samples = _decode_samples(audio_chunk.data, audio_chunk.format)
+        rms, energy = _rms_energy(samples)
+
         return ProcessingResult(
             is_speech=is_speech,
-            is_noise=not is_speech and rms > 0.01,
-            is_silent=rms <= 0.01,
+            is_noise=not is_speech and rms > SILENCE_RMS,
+            is_silent=rms <= SILENCE_RMS,
             rms=float(rms),
             energy=float(energy),
         )
@@ -129,18 +161,13 @@ class AudioProcessor:
             return self.vad.process(audio_chunk)
         
         # Basic processing without VAD
-        if audio_chunk.format == AudioFormat.INT16:
-            samples = np.frombuffer(audio_chunk.data, dtype=np.int16)
-        else:
-            samples = np.frombuffer(audio_chunk.data, dtype=np.float32)
-        
-        rms = np.sqrt(np.mean(samples ** 2))
-        energy = np.sum(samples ** 2) / len(samples)
-        
+        samples = _decode_samples(audio_chunk.data, audio_chunk.format)
+        rms, energy = _rms_energy(samples)
+
         return ProcessingResult(
-            is_speech=rms > 0.05,  # Simple threshold
-            is_noise=rms > 0.01 and rms <= 0.05,
-            is_silent=rms <= 0.01,
+            is_speech=rms > NOISE_RMS,  # Simple energy gate
+            is_noise=SILENCE_RMS < rms <= NOISE_RMS,
+            is_silent=rms <= SILENCE_RMS,
             rms=float(rms),
             energy=float(energy),
         )
