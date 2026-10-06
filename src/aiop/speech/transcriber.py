@@ -4,15 +4,14 @@ Speech transcriber for AIOP
 
 import time
 import threading
-import numpy as np
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Generator, Callable, List, Dict, Any
-from dataclasses import dataclass, field
+from typing import Optional, Callable, List
+from dataclasses import dataclass
 from enum import Enum
-from ..core import logging, exceptions, utils
-from ..audio import AudioCapture, AudioChunk, get_audio_processor, VoiceActivityDetector
+from ..core import logging, exceptions
+from ..audio import AudioCapture, AudioChunk, get_audio_processor
 from .whisper_cpp import WhisperModel, get_whisper_model
-from .language import get_language
 
 logger = logging.get_logger(__name__)
 
@@ -49,6 +48,10 @@ class TranscriptionConfig:
     silence_threshold: float = 0.5  # seconds
     min_speech_duration: float = 0.3  # seconds
     max_speech_duration: float = 30.0  # seconds
+    # Consecutive non-speech chunks required before an utterance is closed.
+    # VAD flickers on breaths and mid-sentence pauses; ending on the first
+    # such frame would discard every utterance as "too_short".
+    silence_end_frames: int = 4
     translate: bool = False
     temperature: float = 0.0
     use_streaming: bool = True
@@ -58,13 +61,15 @@ class SpeechTranscriber:
     """Real-time speech transcriber"""
     
     def __init__(self, config: TranscriptionConfig = None):
-        self.config = config or TranscriptionConfig()
+        self.config = config or self._config_from_settings()
         self.audio_capture: Optional[AudioCapture] = None
         self.whisper_model: Optional[WhisperModel] = None
         self.audio_processor = get_audio_processor()
         self.state = TranscriptionState.IDLE
         self._audio_buffer: List[bytes] = []
         self._speech_start_time: Optional[float] = None
+        self._silence_frames = 0
+        self._speech_frames = 0
         self._last_transcription: Optional[TranscriptionResult] = None
         self._callbacks: List[Callable[[TranscriptionResult], None]] = []
         self._is_running = False
@@ -73,7 +78,49 @@ class SpeechTranscriber:
         self._partial_generation = 0
         self._transcription_lock = threading.Lock()
         self._partial_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aiop-partial")
+        # Final transcription runs here instead of on whichever thread called
+        # stop(). whisper takes seconds; on the Qt main thread that froze the
+        # whole UI on every release, and on the PortAudio callback thread it
+        # starved the capture buffer.
+        self._final_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aiop-final")
+        self._closed = False
         self._setup_components()
+
+    @staticmethod
+    def _config_from_settings() -> TranscriptionConfig:
+        """Build a transcriber config from the persisted app settings.
+
+        Falls back to dataclass defaults when settings are unavailable so
+        constructing a transcriber never fails at import time.
+        """
+        defaults = TranscriptionConfig()
+        try:
+            from ..core import config as app_config
+
+            settings = app_config.get_config().speech
+        except Exception as error:
+            logger.debug("Could not read speech settings: %s", error)
+            return defaults
+
+        model_value = settings.model_path
+        if not model_value:
+            return defaults
+
+        # Accept either a bare name ("base.en") or a path to a .bin file.
+        model_path = Path(model_value).expanduser()
+        if model_path.suffix == ".bin":
+            model_name = model_path.stem.removeprefix("ggml-")
+        else:
+            model_name = model_value
+
+        return TranscriptionConfig(
+            model_name=model_name,
+            language=settings.language,
+            sample_rate=defaults.sample_rate,
+            vad_enabled=settings.use_vad,
+            vad_aggressiveness=settings.vad_aggressiveness,
+            temperature=settings.temperature,
+        )
     
     def _setup_components(self) -> None:
         """Set up audio capture and whisper model"""
@@ -93,67 +140,109 @@ class SpeechTranscriber:
         except Exception as e:
             logger.warning(f"Failed to load whisper model: {e}")
             self.whisper_model = None
+
+        if self.whisper_model:
+            # Load the weights at startup rather than on the first release.
+            try:
+                self.whisper_model.warmup()
+            except Exception as e:
+                logger.debug("Whisper warmup skipped: %s", e)
     
     def _process_audio_chunk(self, audio_chunk: AudioChunk) -> None:
         """Process incoming audio chunk"""
+        if not self._is_running:
+            # The stream stays warm between utterances so the next keypress
+            # records instantly; only capture while a dictation is armed.
+            return
+
         if self.state == TranscriptionState.IDLE:
             # Check for speech start
             result = self.audio_processor.process_chunk(audio_chunk)
-            
-            if result.is_speech:
+
+            if result.is_speech and not result.is_silent:
                 self._speech_start_time = time.time()
                 self._audio_buffer = [audio_chunk.data]
+                self._silence_frames = 0
+                self._speech_frames = 1
                 self.state = TranscriptionState.LISTENING
                 logger.debug("Speech detected - started recording")
-        
+
         elif self.state == TranscriptionState.LISTENING:
             # Continue recording
             self._audio_buffer.append(audio_chunk.data)
             self._maybe_emit_partial()
-            
+
             # Check for speech end
             result = self.audio_processor.process_chunk(audio_chunk)
-            
-            if not result.is_speech:
-                # Check if we have enough speech
-                duration = time.time() - (self._speech_start_time or time.time())
-                if duration >= self.config.min_speech_duration:
-                    self.state = TranscriptionState.PROCESSING
-                    logger.debug(f"Speech ended after {duration:.2f}s - processing")
-                    self._process_buffer()
-                else:
-                    # Not enough speech, reset
-                    self._emit_status("too_short")
-                    self._reset_buffer()
-            
-            # Check for max duration
+
+            if result.is_speech and not result.is_silent:
+                # webrtcvad hangs over into the first frames of silence, so
+                # require real energy as well before calling a chunk voiced.
+                self._silence_frames = 0
+                self._speech_frames += 1
+            else:
+                # VAD flickers on breaths and mid-sentence pauses, so require
+                # sustained silence before treating the utterance as finished.
+                self._silence_frames += 1
+
             duration = time.time() - (self._speech_start_time or time.time())
+
+            # Check for max duration
             if duration >= self.config.max_speech_duration:
-                self.state = TranscriptionState.PROCESSING
                 logger.debug(f"Max duration reached ({duration:.2f}s) - processing")
+                self.state = TranscriptionState.PROCESSING
                 self._process_buffer()
+                return
+
+            if self._silence_frames < self.config.silence_end_frames:
+                return
+
+            # Sustained silence: decide on the voiced duration actually heard,
+            # not wall-clock time, so trailing silence cannot pad a noise blip.
+            speech_duration = self._speech_frames * (
+                self.config.chunk_size / self.config.sample_rate
+            )
+            if speech_duration >= self.config.min_speech_duration:
+                self.state = TranscriptionState.PROCESSING
+                logger.debug(
+                    f"Speech ended after {speech_duration:.2f}s "
+                    f"({self._speech_frames} voiced chunks) - processing"
+                )
+                self._process_buffer()
+            else:
+                # Not enough speech, reset
+                self._emit_status("too_short")
+                self._reset_buffer()
         
         elif self.state == TranscriptionState.PROCESSING:
             # Wait for processing to complete
             pass
     
     def _process_buffer(self) -> None:
-        """Process buffered audio"""
-        if not self._audio_buffer:
+        """Hand the buffered audio to the transcription worker.
+
+        The buffer is detached synchronously, so the next utterance starts
+        collecting immediately and can never be mixed into this one.
+        """
+        audio_data = b"".join(self._audio_buffer)
+        start_time = self._speech_start_time or 0.0
+        self._reset_buffer()
+
+        if not audio_data:
             self._emit_status("no_speech")
-            self._reset_buffer()
             return
 
         if not self.whisper_model:
             logger.error("Cannot transcribe: Whisper model is unavailable")
             self._emit_status("transcription_error")
-            self._reset_buffer()
             return
-        
-        # Combine audio chunks
-        audio_data = b''.join(self._audio_buffer)
-        
-        # Transcribe
+
+        self._final_executor.submit(
+            self._run_final_transcription, audio_data, start_time
+        )
+
+    def _run_final_transcription(self, audio_data: bytes, start_time: float) -> None:
+        """Transcribe detached audio and notify callbacks. Worker thread only."""
         try:
             with self._transcription_lock:
                 text = self.whisper_model.transcribe(
@@ -163,35 +252,30 @@ class SpeechTranscriber:
                     translate=self.config.translate,
                     temperature=self.config.temperature,
                 )
-            
-            # Create result
+
             result = TranscriptionResult(
                 text=text,
-                start_time=self._speech_start_time or 0.0,
+                start_time=start_time,
                 end_time=time.time(),
                 confidence=0.9,  # Placeholder
                 language=self.config.language,
                 is_final=True,
                 status="complete",
             )
-            
+
             self._last_transcription = result
-            
-            # Notify callbacks
+
             for callback in self._callbacks:
                 try:
                     callback(result)
                 except Exception as e:
                     logger.error(f"Error in transcription callback: {e}")
-            
+
             logger.debug(f"Transcription: {text}")
-            
+
         except Exception as e:
             logger.error(f"Transcription error: {e}")
             self._emit_status("transcription_error")
-        
-        finally:
-            self._reset_buffer()
 
     def _emit_status(self, status: str) -> None:
         result = TranscriptionResult(text="", is_final=True, status=status)
@@ -265,17 +349,36 @@ class SpeechTranscriber:
         """Reset audio buffer"""
         self._audio_buffer = []
         self._speech_start_time = None
+        self._silence_frames = 0
+        self._speech_frames = 0
         self._last_partial_at = 0.0
         self._partial_generation += 1
         self.state = TranscriptionState.IDLE
-    
+
     def start(self) -> None:
-        """Start transcription"""
+        """Start transcription.
+
+        The audio stream is opened on first use and then kept warm; closing
+        and reopening the device costs ~140 ms and ~90 ms respectively, which
+        would truncate the opening syllable of every hold-to-talk utterance.
+        """
         if self._is_running:
             return
 
+        if self._closed:
+            # close() shuts the workers down; revive them so the transcriber
+            # stays reusable instead of raising on the next submit.
+            self._closed = False
+            self._partial_executor = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="aiop-partial"
+            )
+            self._final_executor = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="aiop-final"
+            )
+
         try:
-            self.audio_capture.start()
+            if not self.audio_capture.is_running():
+                self.audio_capture.start()
         except Exception:
             self._is_running = False
             self._reset_buffer()
@@ -283,24 +386,35 @@ class SpeechTranscriber:
 
         self._is_running = True
         logger.info("Transcription started")
-    
+
     def stop(self) -> None:
-        """Stop transcription"""
+        """Stop transcription.
+
+        Deliberately leaves the audio stream open; call :meth:`close` to
+        release the microphone. The final transcription is dispatched to a
+        worker, so this returns immediately instead of blocking the caller
+        for the whole whisper run.
+        """
         if not self._is_running:
             return
-        
+
         self._is_running = False
-        self.audio_capture.stop()
-        if self._audio_buffer and self.state in {
-            TranscriptionState.LISTENING,
-            TranscriptionState.PROCESSING,
-        }:
-            self.state = TranscriptionState.PROCESSING
-            self._process_buffer()
-        else:
-            self._emit_status("no_speech")
-            self._reset_buffer()
+        self._process_buffer()
         logger.info("Transcription stopped")
+
+    def close(self) -> None:
+        """Stop transcription, drop pending work, and release the microphone."""
+        if self._is_running:
+            self._is_running = False
+            self._reset_buffer()
+        self._closed = True
+        try:
+            self.audio_capture.stop()
+        except Exception as error:
+            logger.error("Error releasing microphone: %s", error)
+        # Nothing is listening anymore, so a queued whisper run is pointless.
+        self._final_executor.shutdown(wait=False, cancel_futures=True)
+        self._partial_executor.shutdown(wait=False, cancel_futures=True)
     
     def pause(self) -> None:
         """Pause transcription"""

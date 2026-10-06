@@ -3,26 +3,195 @@ Whisper.cpp integration for AIOP
 """
 
 import ctypes
+import math
 import os
-import time
 import subprocess
 import tempfile
+import threading
 import wave
 import numpy as np
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union, Generator
+from typing import Optional, List, Any, Union, Generator
 from dataclasses import dataclass, field
 from ..core import logging, exceptions, utils
 from .model_manager import get_model_path, ModelManager
 
 logger = logging.get_logger(__name__)
 
+# whisper.cpp 1.9.3 ABI -------------------------------------------------
+#
+# The structs below mirror include/whisper.h from the whisper.cpp release the
+# bundled models/whisper.dll was built from. They must stay field-for-field
+# identical: whisper_full() takes whisper_full_params *by value*, so a layout
+# mismatch corrupts the call instead of failing loudly.
+
+WHISPER_SAMPLE_RATE = 16000
+
+# The conv encoder halves the mel spectrogram, so one encoder position covers
+# 20 ms and the model accepts 1500 of them (30 s of audio).
+ENCODER_POSITIONS_PER_SECOND = 50
+MAX_AUDIO_CTX = 1500
+
+# Head-room added on top of the exact content (200 positions == 4 s). Too
+# little and the decoder runs out of audio and loops on the tail of the
+# utterance, which is both wrong and extremely slow.
+AUDIO_CTX_MARGIN = 200
+
+_SAMPLING_GREEDY = 0
+
+# os.add_dll_directory() returns a handle that unregisters the directory when
+# garbage collected, so every handle taken here must outlive the library.
+_dll_directory_handles: List[Any] = []
+_registered_backend_dirs: set = set()
+
+
+class _VADParams(ctypes.Structure):
+    _fields_ = [
+        ("threshold", ctypes.c_float),
+        ("min_speech_duration_ms", ctypes.c_int),
+        ("min_silence_duration_ms", ctypes.c_int),
+        ("max_speech_duration_s", ctypes.c_float),
+        ("speech_pad_ms", ctypes.c_int),
+        ("samples_overlap", ctypes.c_float),
+    ]
+
+
+class _GreedyParams(ctypes.Structure):
+    _fields_ = [("best_of", ctypes.c_int)]
+
+
+class _BeamSearchParams(ctypes.Structure):
+    _fields_ = [("beam_size", ctypes.c_int), ("patience", ctypes.c_float)]
+
+
+class _Aheads(ctypes.Structure):
+    _fields_ = [("n_heads", ctypes.c_size_t), ("heads", ctypes.c_void_p)]
+
+
+class WhisperContextParams(ctypes.Structure):
+    _fields_ = [
+        ("use_gpu", ctypes.c_bool),
+        ("flash_attn", ctypes.c_bool),
+        ("gpu_device", ctypes.c_int),
+        ("dtw_token_timestamps", ctypes.c_bool),
+        ("dtw_aheads_preset", ctypes.c_int),
+        ("dtw_n_top", ctypes.c_int),
+        ("dtw_aheads", _Aheads),
+        ("dtw_mem_size", ctypes.c_size_t),
+    ]
+
+
+_NewSegmentCallback = ctypes.CFUNCTYPE(
+    None, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p
+)
+_ProgressCallback = ctypes.CFUNCTYPE(
+    None, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p
+)
+_EncoderBeginCallback = ctypes.CFUNCTYPE(
+    ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p
+)
+_AbortCallback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_void_p)
+_LogitsFilterCallback = ctypes.CFUNCTYPE(
+    None,
+    ctypes.c_void_p,
+    ctypes.c_void_p,
+    ctypes.c_void_p,
+    ctypes.c_int,
+    ctypes.POINTER(ctypes.c_float),
+    ctypes.c_void_p,
+)
+
+
+class WhisperFullParams(ctypes.Structure):
+    _fields_ = [
+        ("strategy", ctypes.c_int),
+        ("n_threads", ctypes.c_int),
+        ("n_max_text_ctx", ctypes.c_int),
+        ("offset_ms", ctypes.c_int),
+        ("duration_ms", ctypes.c_int),
+        ("translate", ctypes.c_bool),
+        ("no_context", ctypes.c_bool),
+        ("no_timestamps", ctypes.c_bool),
+        ("single_segment", ctypes.c_bool),
+        ("print_special", ctypes.c_bool),
+        ("print_progress", ctypes.c_bool),
+        ("print_realtime", ctypes.c_bool),
+        ("print_timestamps", ctypes.c_bool),
+        ("token_timestamps", ctypes.c_bool),
+        ("thold_pt", ctypes.c_float),
+        ("thold_ptsum", ctypes.c_float),
+        ("max_len", ctypes.c_int),
+        ("split_on_word", ctypes.c_bool),
+        ("max_tokens", ctypes.c_int),
+        ("debug_mode", ctypes.c_bool),
+        ("audio_ctx", ctypes.c_int),
+        ("tdrz_enable", ctypes.c_bool),
+        ("suppress_regex", ctypes.c_char_p),
+        ("initial_prompt", ctypes.c_char_p),
+        ("carry_initial_prompt", ctypes.c_bool),
+        ("prompt_tokens", ctypes.POINTER(ctypes.c_int32)),
+        ("prompt_n_tokens", ctypes.c_int),
+        ("language", ctypes.c_char_p),
+        ("detect_language", ctypes.c_bool),
+        ("suppress_blank", ctypes.c_bool),
+        ("suppress_nst", ctypes.c_bool),
+        ("temperature", ctypes.c_float),
+        ("max_initial_ts", ctypes.c_float),
+        ("length_penalty", ctypes.c_float),
+        ("temperature_inc", ctypes.c_float),
+        ("entropy_thold", ctypes.c_float),
+        ("logprob_thold", ctypes.c_float),
+        ("no_speech_thold", ctypes.c_float),
+        ("greedy", _GreedyParams),
+        ("beam_search", _BeamSearchParams),
+        ("new_segment_callback", _NewSegmentCallback),
+        ("new_segment_callback_user_data", ctypes.c_void_p),
+        ("progress_callback", _ProgressCallback),
+        ("progress_callback_user_data", ctypes.c_void_p),
+        ("encoder_begin_callback", _EncoderBeginCallback),
+        ("encoder_begin_callback_user_data", ctypes.c_void_p),
+        ("abort_callback", _AbortCallback),
+        ("abort_callback_user_data", ctypes.c_void_p),
+        ("logits_filter_callback", _LogitsFilterCallback),
+        ("logits_filter_callback_user_data", ctypes.c_void_p),
+        ("grammar_rules", ctypes.c_void_p),
+        ("n_grammar_rules", ctypes.c_size_t),
+        ("i_start_rule", ctypes.c_size_t),
+        ("grammar_penalty", ctypes.c_float),
+        ("vad", ctypes.c_bool),
+        ("vad_model_path", ctypes.c_char_p),
+        ("vad_params", _VADParams),
+    ]
+
+
+def audio_ctx_for(
+    n_samples: int,
+    sample_rate: int = WHISPER_SAMPLE_RATE,
+    override: int = 0,
+) -> int:
+    """Pick the encoder window for one utterance.
+
+    whisper pads every call up to ``audio_ctx`` positions, so passing the
+    default 1500 makes a two-second phrase pay for the full 30 s window. The
+    window has to stay larger than the content though, otherwise the decoder
+    reaches the end of the audio and keeps generating.
+    """
+    if override and override > 0:
+        return min(int(override), MAX_AUDIO_CTX)
+    seconds = max(int(n_samples), 0) / float(sample_rate or WHISPER_SAMPLE_RATE)
+    positions = math.ceil(seconds * ENCODER_POSITIONS_PER_SECOND) + AUDIO_CTX_MARGIN
+    return max(1, min(MAX_AUDIO_CTX, positions))
+
+
+
+_DEFAULT_THREADS = os.cpu_count() or 4
+
 
 @dataclass
 class WhisperParameters:
     """Whisper.cpp parameters"""
-    n_threads: int = 4
-    n_max_threads: int = 4
+    n_threads: int = _DEFAULT_THREADS
+    n_max_threads: int = _DEFAULT_THREADS
     print_special: bool = False
     print_progress: bool = False
     print_realtime: bool = False
@@ -33,7 +202,11 @@ class WhisperParameters:
     diarize: bool = False
     n_max_text_ctx: int = 16384
     split_on_word: bool = False
+    # 0 means "size the window to the utterance"; see audio_ctx_for().
     audio_ctx: int = 0
+    # Conditioning the decoder on its own previous output makes short clips
+    # loop on the last sentence. WhisperFlow-style dictation wants this off.
+    no_context: bool = True
     speed_up: bool = False
     debug_mode: bool = False
     prompt: Optional[str] = None
@@ -75,12 +248,21 @@ class WhisperCPP:
         self.ctx: Optional[ctypes.c_void_p] = None
         self.state: Optional[ctypes.c_void_p] = None
         self._is_loaded = False
+        # whisper_full() is not re-entrant on one context and the model object
+        # is a process-wide singleton, so context swaps and inference have to
+        # be serialised or a concurrent load_model() frees a live context.
+        self._lock = threading.RLock()
         self._load_library()
 
     def _find_cli(self) -> Optional[Path]:
         """Find the official Whisper command-line backend."""
-        candidates = [Path("whisper-cli.exe"), Path("models") / "whisper-cli.exe"]
-        return next((path for path in candidates if path.exists()), None)
+        candidates = ["whisper-cli.exe", "main.exe"]
+        for directory in utils.get_model_search_dirs():
+            for name in candidates:
+                candidate = directory / name
+                if candidate.exists():
+                    return candidate
+        return None
     
     def _find_library(self) -> str:
         """Find whisper.cpp library"""
@@ -92,26 +274,29 @@ class WhisperCPP:
         except ImportError:
             pass
         
-        # Try common locations for native library
+        # Bundled and app-data model directories are searched first so the
+        # backend resolves regardless of the working directory.
+        library_names = ["whisper.dll", "libwhisper.so", "libwhisper.dylib"]
+        for directory in utils.get_model_search_dirs():
+            for name in library_names:
+                candidate = directory / name
+                if candidate.exists():
+                    return str(candidate)
+
+        # Fall back to locations relative to the working directory and the
+        # system library path for manual installs.
         possible_paths = [
             "whisper.dll",
-            str(Path("models") / "whisper.dll"),
             "whisper.cpp/whisper.dll",
             "libwhisper.dll",
             "/usr/local/lib/libwhisper.so",
             "whisper.so",
         ]
-        
+
         for path in possible_paths:
             if Path(path).exists():
                 return path
-        
-        # Try in the models directory
-        models_dir = utils.get_models_dir()
-        whisper_path = models_dir / "whisper.dll"
-        if whisper_path.exists():
-            return str(whisper_path)
-        
+
         raise exceptions.SpeechError(
             "whisper.cpp library not found. Please download from "
             "https://github.com/ggerganov/whisper.cpp and place whisper.dll in the models directory, "
@@ -134,95 +319,99 @@ class WhisperCPP:
         
         if not Path(self.library_path).exists():
             raise exceptions.SpeechError(f"Whisper library not found: {self.library_path}")
-        
+
         try:
+            self._register_ggml_backends(Path(self.library_path).resolve().parent)
             self.lib = ctypes.CDLL(self.library_path)
             self._setup_functions()
             logger.info(f"Loaded whisper.cpp library: {self.library_path}")
         except Exception as e:
+            self.lib = None
             if self.cli_path:
-                self.lib = None
-                logger.info("Using official whisper-cli.exe backend")
+                logger.info(
+                    "whisper.dll backend unavailable (%s); using whisper-cli.exe", e
+                )
                 self._is_loaded = True
                 return
             raise exceptions.SpeechError(f"Failed to load whisper.cpp library: {e}")
-    
+
+    @staticmethod
+    def _register_ggml_backends(directory: Path) -> None:
+        """Make ggml's registry see the bundled ggml-cpu-*.dll files.
+
+        ggml scans the directory of the running executable, which is python.exe
+        or the app exe rather than models/, so without this call the device
+        count stays zero and whisper_init aborts with GGML_ASSERT(device).
+        """
+        if os.name != "nt":
+            return
+        ggml_path = Path(directory) / "ggml.dll"
+        if not ggml_path.exists() or str(directory) in _registered_backend_dirs:
+            return
+        _registered_backend_dirs.add(str(directory))
+
+        if hasattr(os, "add_dll_directory"):
+            # The returned handle unregisters the directory when dropped.
+            _dll_directory_handles.append(os.add_dll_directory(str(directory)))
+
+        ggml = ctypes.CDLL(str(ggml_path))
+        loader = getattr(ggml, "ggml_backend_load_all_from_path", None)
+        if loader is not None:
+            loader.argtypes = [ctypes.c_char_p]
+            loader.restype = None
+            loader(str(directory).encode())
+        else:
+            ggml.ggml_backend_load_all()
+        logger.debug("Registered ggml backends from %s", directory)
+
     def _setup_functions(self) -> None:
-        """Set up function prototypes"""
-        # Context functions
-        self.lib.whisper_init_from_file_with_params.argtypes = [
-            ctypes.c_char_p,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p,
-        ]
-        self.lib.whisper_init_from_file_with_params.restype = ctypes.c_void_p
-        
-        self.lib.whisper_init_from_file.argtypes = [ctypes.c_char_p]
-        self.lib.whisper_init_from_file.restype = ctypes.c_void_p
-        
-        self.lib.whisper_free.argtypes = [ctypes.c_void_p]
-        self.lib.whisper_free.restype = None
-        
-        # State functions
-        self.lib.whisper_init_state.argtypes = [ctypes.c_void_p]
-        self.lib.whisper_init_state.restype = ctypes.c_void_p
-        
-        self.lib.whisper_free_state.argtypes = [ctypes.c_void_p]
-        self.lib.whisper_free_state.restype = None
-        
-        # Processing functions
-        self.lib.whisper_full.argtypes = [
-            ctypes.c_void_p,
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.c_int,
-        ]
-        self.lib.whisper_full.restype = ctypes.c_int
-        
-        self.lib.whisper_full_with_state.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.c_int,
-        ]
-        self.lib.whisper_full_with_state.restype = ctypes.c_int
-        
-        self.lib.whisper_chunk.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.c_int,
-        ]
-        self.lib.whisper_chunk.restype = ctypes.c_int
-        
-        self.lib.whisper_chunk_state.argtypes = [ctypes.c_void_p]
-        self.lib.whisper_chunk_state.restype = ctypes.c_void_p
-        
-        # Parameter functions
-        self.lib.whisper_set_mel.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.POINTER(ctypes.c_float),
-        ]
-        self.lib.whisper_set_mel.restype = None
-        
-        # Text functions
-        self.lib.whisper_token_to_str.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_int,
-        ]
-        self.lib.whisper_token_to_str.restype = ctypes.c_char_p
-        
-        self.lib.whisper_lang_id.argtypes = [ctypes.c_int]
-        self.lib.whisper_lang_id.restype = ctypes.c_char_p
-        
-        # Language functions
-        self.lib.whisper_lang_max_id.argtypes = []
-        self.lib.whisper_lang_max_id.restype = ctypes.c_int
-        
-        self.lib.whisper_lang_str.argtypes = [ctypes.c_int]
-        self.lib.whisper_lang_str.restype = ctypes.c_char_p
+        """Bind the whisper.cpp entry points this module actually calls.
+
+        Raises when a symbol is missing so the caller can fall back to the
+        CLI: binding a function that does not exist only fails much later,
+        inside an unrelated call.
+        """
+        signatures = {
+            "whisper_version": ([], ctypes.c_char_p),
+            "whisper_context_default_params_by_ref": ([], ctypes.c_void_p),
+            "whisper_free_context_params": ([ctypes.c_void_p], None),
+            "whisper_full_default_params_by_ref": ([ctypes.c_int], ctypes.c_void_p),
+            "whisper_free_params": ([ctypes.c_void_p], None),
+            "whisper_init_from_file_with_params": (
+                [ctypes.c_char_p, WhisperContextParams],
+                ctypes.c_void_p,
+            ),
+            "whisper_free": ([ctypes.c_void_p], None),
+            "whisper_full": (
+                [
+                    ctypes.c_void_p,
+                    WhisperFullParams,
+                    ctypes.POINTER(ctypes.c_float),
+                    ctypes.c_int,
+                ],
+                ctypes.c_int,
+            ),
+            "whisper_full_n_segments": ([ctypes.c_void_p], ctypes.c_int),
+            "whisper_full_get_segment_text": (
+                [ctypes.c_void_p, ctypes.c_int],
+                ctypes.c_char_p,
+            ),
+        }
+
+        missing = []
+        for name, (argtypes, restype) in signatures.items():
+            try:
+                function = getattr(self.lib, name)
+            except AttributeError:
+                missing.append(name)
+                continue
+            function.argtypes = argtypes
+            function.restype = restype
+
+        if missing:
+            raise exceptions.SpeechError(
+                "whisper.dll does not export: " + ", ".join(missing)
+            )
     
     def load_model(self, model_path: Optional[Union[str, Path]] = None) -> None:
         """Load whisper model"""
@@ -245,36 +434,53 @@ class WhisperCPP:
             self._is_loaded = True
             logger.info(f"Using whisper-cli with model: {self.model_path}")
             return
-        
-        # Free existing context
-        if self.ctx:
-            self.lib.whisper_free(self.ctx)
-            self.ctx = None
-        
-        # Load model
-        model_path_bytes = str(self.model_path).encode('utf-8')
-        self.ctx = self.lib.whisper_init_from_file(model_path_bytes)
-        
-        if not self.ctx:
-            raise exceptions.SpeechError(f"Failed to load model: {self.model_path}")
-        
-        # Initialize state
-        self.state = self.lib.whisper_init_state(self.ctx)
-        
-        self._is_loaded = True
+
+        with self._lock:
+            # Free existing context
+            if self.ctx:
+                self.lib.whisper_free(self.ctx)
+                self.ctx = None
+
+            context_params = self._copy_default_params(
+                WhisperContextParams,
+                self.lib.whisper_context_default_params_by_ref,
+                self.lib.whisper_free_context_params,
+            )
+            model_path_bytes = str(self.model_path).encode('utf-8')
+            self.ctx = self.lib.whisper_init_from_file_with_params(
+                model_path_bytes, context_params
+            )
+
+            if not self.ctx:
+                raise exceptions.SpeechError(f"Failed to load model: {self.model_path}")
+
+            self._is_loaded = True
         logger.info(f"Loaded whisper model: {self.model_path}")
+
+    @staticmethod
+    def _copy_default_params(structure, maker, free, *args):
+        """Snapshot a `_by_ref` default-params struct and release the C copy."""
+        pointer = maker(*args)
+        if not pointer:
+            raise exceptions.SpeechError("whisper.cpp returned no default parameters")
+        try:
+            view = ctypes.cast(pointer, ctypes.POINTER(structure)).contents
+            return structure.from_buffer_copy(bytes(view))
+        finally:
+            free(pointer)
     
     def unload_model(self) -> None:
         """Unload whisper model"""
-        if self.state and self.lib:
-            self.lib.whisper_free_state(self.state)
-            self.state = None
-        
-        if self.ctx and self.lib:
-            self.lib.whisper_free(self.ctx)
-            self.ctx = None
-        
-        self._is_loaded = False
+        with self._lock:
+            if self.state and self.lib:
+                self.lib.whisper_free_state(self.state)
+                self.state = None
+
+            if self.ctx and self.lib:
+                self.lib.whisper_free(self.ctx)
+                self.ctx = None
+
+            self._is_loaded = False
         logger.info("Unloaded whisper model")
 
     def _transcribe_cli(self, audio_data: Union[bytes, np.ndarray], sample_rate: int) -> str:
@@ -342,95 +548,98 @@ class WhisperCPP:
         if self.lib is None and self.cli_path:
             return self._transcribe_cli(audio_data, sample_rate)
 
-        if not self.ctx:
-            self.load_model()
-        
-        # Convert audio data
-        if isinstance(audio_data, bytes):
-            audio_array = np.frombuffer(audio_data, dtype=np.float32)
+        samples = self._to_float32(audio_data, sample_rate)
+
+        with self._lock:
+            if not self.ctx:
+                self.load_model()
+
+            params = self._build_params(
+                n_samples=samples.size,
+                language=language,
+                translate=translate,
+                temperature=temperature,
+                max_len=max_len,
+            )
+            return self._process_audio(samples, params)
+
+    @staticmethod
+    def _to_float32(
+        audio_data: Union[bytes, np.ndarray],
+        sample_rate: int,
+    ) -> np.ndarray:
+        """Return mono float32 PCM at 16 kHz, the format whisper_full expects."""
+        if isinstance(audio_data, (bytes, bytearray, memoryview)):
+            samples = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32)
+            samples /= 32768.0
         else:
-            audio_array = audio_data.astype(np.float32)
-        
-        # Set parameters
-        params = self._create_params(
-            n_threads=self.parameters.n_threads,
-            translate=translate,
-            language=language,
-            temperature=temperature,
-            max_len=max_len,
-        )
-        
-        # Process audio
-        result = self._process_audio(audio_array, params)
-        return result
-    
-    def _create_params(self, **kwargs) -> ctypes.c_void_p:
-        """Create whisper parameters"""
-        # This is a simplified version
-        # In practice, we'd create a proper params struct
-        class Params(ctypes.Structure):
-            _fields_ = [
-                ("n_threads", ctypes.c_int),
-                ("n_max_threads", ctypes.c_int),
-                ("print_special", ctypes.c_bool),
-                ("print_progress", ctypes.c_bool),
-                ("print_realtime", ctypes.c_bool),
-                ("print_timestamps", ctypes.c_bool),
-                ("translate", ctypes.c_bool),
-                ("language", ctypes.c_char_p),
-                ("detect_language", ctypes.c_bool),
-                ("diarize", ctypes.c_bool),
-                ("n_max_text_ctx", ctypes.c_int),
-                ("split_on_word", ctypes.c_bool),
-                ("audio_ctx", ctypes.c_int),
-                ("speed_up", ctypes.c_bool),
-                ("debug_mode", ctypes.c_bool),
-                ("prompt", ctypes.c_char_p),
-                ("temperature", ctypes.c_float),
-                ("max_len", ctypes.c_int),
-            ]
-        
-        params = Params()
-        for key, value in kwargs.items():
-            if hasattr(params, key):
-                setattr(params, key, value)
-        
-        return ctypes.byref(params)
-    
-    def _process_audio(
+            raw = np.asarray(audio_data).reshape(-1)
+            if raw.dtype == np.int16:
+                samples = raw.astype(np.float32) / 32768.0
+            else:
+                samples = raw.astype(np.float32)
+                if samples.size and (samples.max() > 1.0 or samples.min() < -1.0):
+                    samples = samples / 32768.0
+            samples = np.clip(samples, -1.0, 1.0)
+
+        rate = int(sample_rate or WHISPER_SAMPLE_RATE)
+        if rate != WHISPER_SAMPLE_RATE and samples.size > 1:
+            target = int(round(samples.size * WHISPER_SAMPLE_RATE / rate))
+            if target > 0:
+                positions = np.linspace(0.0, samples.size - 1, target)
+                samples = np.interp(positions, np.arange(samples.size), samples)
+
+        return np.ascontiguousarray(samples, dtype=np.float32)
+
+    def _build_params(
         self,
-        audio_array: np.ndarray,
-        params: ctypes.c_void_p,
-    ) -> str:
-        """Process audio with whisper"""
-        # Convert to int16 if needed
-        if audio_array.dtype != np.int16:
-            audio_array = (audio_array * 32767).astype(np.int16)
-        
-        # Get array pointer
-        audio_ptr = audio_array.ctypes.data_as(ctypes.POINTER(ctypes.c_int16))
-        
-        # Process
-        result = self.lib.whisper_full(
-            self.ctx,
-            params,
-            audio_ptr,
-            len(audio_array),
+        n_samples: int,
+        language: Optional[str] = None,
+        translate: bool = False,
+        temperature: float = 0.0,
+        max_len: int = 0,
+    ) -> WhisperFullParams:
+        """Build decoding parameters from whisper's own greedy defaults."""
+        params = self._copy_default_params(
+            WhisperFullParams,
+            self.lib.whisper_full_default_params_by_ref,
+            self.lib.whisper_free_params,
+            _SAMPLING_GREEDY,
         )
-        
+        params.n_threads = max(1, int(self.parameters.n_threads))
+        params.audio_ctx = audio_ctx_for(
+            n_samples, WHISPER_SAMPLE_RATE, self.parameters.audio_ctx
+        )
+        params.no_context = bool(self.parameters.no_context)
+        params.no_timestamps = True
+        params.translate = bool(translate)
+        params.temperature = float(temperature)
+        params.max_len = int(max_len or self.parameters.max_len or 0)
+        params.detect_language = bool(self.parameters.detect_language)
+        params.print_special = False
+        params.print_progress = False
+        params.print_realtime = False
+        params.print_timestamps = False
+
+        language = language or self.parameters.language
+        if language:
+            params.language = str(language).encode("ascii", "ignore")
+        return params
+
+    def _process_audio(self, samples: np.ndarray, params: WhisperFullParams) -> str:
+        """Run whisper_full over float32 PCM and join the resulting segments."""
+        audio_ptr = samples.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        result = self.lib.whisper_full(self.ctx, params, audio_ptr, int(samples.size))
         if result != 0:
             raise exceptions.SpeechError(f"Whisper processing failed with code: {result}")
-        
-        # Get result text
+
         n_segments = self.lib.whisper_full_n_segments(self.ctx)
-        text_parts = []
-        
+        parts = []
         for i in range(n_segments):
-            text_ptr = self.lib.whisper_full_get_segment_text(self.ctx, i)
-            text = ctypes.c_char_p(text_ptr).value.decode('utf-8')
-            text_parts.append(text)
-        
-        return ' '.join(text_parts)
+            text = self.lib.whisper_full_get_segment_text(self.ctx, i)
+            if text:
+                parts.append(text.decode("utf-8", "replace").strip())
+        return " ".join(part for part in parts if part)
     
     def transcribe_streaming(
         self,
@@ -490,6 +699,11 @@ class WhisperCPP:
     def is_loaded(self) -> bool:
         """Check if model is loaded"""
         return self._is_loaded
+
+    def is_ready(self) -> bool:
+        """True when the DLL backend is bound and the weights are resident."""
+        with self._lock:
+            return self.lib is not None and self.ctx is not None
     
     def get_model_path(self) -> Optional[Path]:
         """Get current model path"""
@@ -541,6 +755,23 @@ class WhisperModel:
             model_path=model_path,
             library_path=self.library_path,
         )
+
+    def warmup(self) -> bool:
+        """Read the weights now so the first dictation only pays for inference.
+
+        Returns False when the DLL backend is unavailable and the CLI backend
+        (which loads the model per call) will be used instead.
+        """
+        if not self.whisper or self.whisper.lib is None:
+            return False
+        if self.whisper.is_ready():
+            return True
+        try:
+            self.whisper.load_model()
+            return True
+        except Exception as error:
+            logger.debug("Whisper warmup failed: %s", error)
+            return False
     
     def transcribe(
         self,
