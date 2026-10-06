@@ -12,6 +12,9 @@ from .win32_api import VirtualKey, ModifierKey, get_win32_api
 
 logger = logging.get_logger(__name__)
 
+WM_HOTKEY = 0x0312
+HWND_MESSAGE = ctypes.c_void_p(-3)
+
 
 class WNDCLASSW(ctypes.Structure):
     _fields_ = [
@@ -110,10 +113,11 @@ class HotkeyManager:
             self._hwnd = self.user32.CreateWindowExW(
                 0,
                 self._window_class,
-                "AIOP Hotkey Window",
+                None,
                 0,
                 0, 0, 0, 0,
-                0, 0,
+                HWND_MESSAGE,
+                None,
                 self.kernel32.GetModuleHandleW(None),
                 None,
             )
@@ -126,18 +130,25 @@ class HotkeyManager:
     
     def _window_proc_impl(self, hwnd, msg, wparam, lparam):
         """Window procedure implementation"""
-        if msg == 0x0312:  # WM_HOTKEY
-            hotkey_id = wparam
-            if hotkey_id in self.hotkeys:
-                hotkey = self.hotkeys[hotkey_id]
-                if hotkey.enabled:
-                    try:
-                        hotkey.callback()
-                    except Exception as e:
-                        logger.error(f"Error in hotkey callback: {e}")
+        if msg == WM_HOTKEY:
+            self.dispatch_hotkey(wparam)
             return 0
         
         return self.user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+    def dispatch_hotkey(self, hotkey_id: int) -> None:
+        """Invoke the callback bound to a WM_HOTKEY message.
+
+        Called either from the hidden window procedure or from the Qt native
+        event filter, since Qt owns the thread message loop.
+        """
+        hotkey = self.hotkeys.get(hotkey_id)
+        if not hotkey or not hotkey.enabled:
+            return
+        try:
+            hotkey.callback()
+        except Exception as e:
+            logger.error(f"Error in hotkey callback: {e}")
     
     @staticmethod
     def _window_proc_type(func):
@@ -397,7 +408,9 @@ class HotkeyManager:
     
     def __del__(self):
         """Cleanup"""
-        self.unregister_all()
+        # __init__ can fail before _hwnd/user32 exist, so guard the teardown.
+        if getattr(self, "user32", None) is not None and getattr(self, "_hwnd", None) is not None:
+            self.unregister_all()
 
 
 # Global hotkey manager instance

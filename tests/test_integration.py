@@ -360,6 +360,7 @@ class TestErrorHandlingIntegration:
 
         transcriber = SpeechTranscriber.__new__(SpeechTranscriber)
         transcriber._is_running = False
+        transcriber._closed = False
         transcriber._audio_buffer = []
         transcriber._speech_start_time = None
         transcriber._last_partial_at = 0.0
@@ -368,7 +369,10 @@ class TestErrorHandlingIntegration:
         transcriber.audio_capture = type(
             "FailingCapture",
             (),
-            {"start": lambda self: (_ for _ in ()).throw(RuntimeError("no microphone"))},
+            {
+                "is_running": lambda self: False,
+                "start": lambda self: (_ for _ in ()).throw(RuntimeError("no microphone")),
+            },
         )()
 
         with pytest.raises(RuntimeError, match="no microphone"):
@@ -467,7 +471,7 @@ class TestErrorHandlingIntegration:
 
         assert result.success is False
         assert result.message == "Could not copy dictation"
-        win32._send_key.assert_not_called()
+        win32.send_vk_combo.assert_not_called()
 
     def test_action_router_reports_focus_restore_failure(self, monkeypatch):
         """Insertion fails clearly when the captured app cannot be restored."""
@@ -484,7 +488,7 @@ class TestErrorHandlingIntegration:
 
         assert result.success is False
         assert result.message == "Could not restore focused application"
-        win32._send_key_down.assert_not_called()
+        win32.send_vk_combo.assert_not_called()
 
     def test_action_router_reports_paste_failure(self, monkeypatch):
         """Insertion reports keyboard injection failures without claiming success."""
@@ -494,7 +498,7 @@ class TestErrorHandlingIntegration:
         clipboard.set_text.return_value = True
         win32 = Mock()
         win32.set_foreground_window.return_value = True
-        win32._send_key_down.side_effect = RuntimeError("paste unavailable")
+        win32.send_vk_combo.side_effect = RuntimeError("paste unavailable")
         monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
         monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
 
@@ -512,6 +516,61 @@ class TestErrorHandlingIntegration:
         assert result.handled is False
         assert result.success is False
         assert result.message == "No speech recognized"
+
+    def test_hotkey_event_filter_dispatches_registered_callback(self):
+        """A WM_HOTKEY message routed through the Qt filter runs the callback."""
+        import ctypes
+        from aiop.windows.event_filter import MSG, HotkeyEventFilter
+        from aiop.windows.hotkeys import WM_HOTKEY
+
+        fired = []
+        manager = Mock()
+        manager.dispatch_hotkey = fired.append
+        filt = HotkeyEventFilter(manager)
+
+        msg = MSG()
+        msg.message = WM_HOTKEY
+        msg.wParam = 7
+
+        handled, result = filt.nativeEventFilter(b"windows_generic_MSG", ctypes.addressof(msg))
+
+        assert fired == [7]
+        assert (handled, result) == (False, 0)
+
+    def test_hotkey_event_filter_ignores_other_messages(self):
+        """Non-hotkey Win32 messages pass through untouched."""
+        import ctypes
+        from aiop.windows.event_filter import MSG, HotkeyEventFilter
+
+        fired = []
+        manager = Mock()
+        manager.dispatch_hotkey = fired.append
+        filt = HotkeyEventFilter(manager)
+
+        msg = MSG()
+        msg.message = 0x0002  # WM_DESTROY
+        msg.wParam = 3
+
+        filt.nativeEventFilter(b"windows_generic_MSG", ctypes.addressof(msg))
+
+        assert fired == []
+
+    def test_hotkey_manager_dispatch_respects_enabled_flag(self):
+        """Disabled hotkeys do not fire, and unknown ids are ignored."""
+        from aiop.windows.hotkeys import Hotkey, HotkeyManager
+
+        fired = []
+        manager = HotkeyManager.__new__(HotkeyManager)
+        manager.hotkeys = {
+            1: Hotkey(id=1, modifiers=0, key=0x20, callback=lambda: fired.append("on")),
+            2: Hotkey(id=2, modifiers=0, key=0x4F, callback=lambda: fired.append("off"), enabled=False),
+        }
+
+        manager.dispatch_hotkey(1)
+        manager.dispatch_hotkey(2)
+        manager.dispatch_hotkey(99)
+
+        assert fired == ["on"]
 
     def test_tray_app_maps_empty_status_to_user_feedback(self):
         """Empty transcription statuses become distinct visible feedback."""
@@ -554,7 +613,7 @@ class TestErrorHandlingIntegration:
 
         assert result.success is True
         win32.set_foreground_window.assert_called_once_with(123)
-        win32._send_key_down.assert_called_once()
+        win32.send_vk_combo.assert_called_once_with(0x11, 0x56)
 
     @pytest.mark.skip(reason="Requires a desktop Qt display")
     def test_overlay_supports_hold_to_talk(self):

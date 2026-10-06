@@ -221,6 +221,58 @@ class ModifierKey(Enum):
     MOD_NOREPEAT = 0x4000
 
 
+ULONG_PTR = ctypes.POINTER(ctypes.c_ulong)
+
+
+class KEYBDINPUT(ctypes.Structure):
+    _fields_ = [
+        ("wVk", ctypes.wintypes.WORD),
+        ("wScan", ctypes.wintypes.WORD),
+        ("dwFlags", ctypes.wintypes.DWORD),
+        ("time", ctypes.wintypes.DWORD),
+        ("dwExtraInfo", ULONG_PTR),
+    ]
+
+
+class MOUSEINPUT(ctypes.Structure):
+    _fields_ = [
+        ("dx", ctypes.c_long),
+        ("dy", ctypes.c_long),
+        ("mouseData", ctypes.wintypes.DWORD),
+        ("dwFlags", ctypes.wintypes.DWORD),
+        ("time", ctypes.wintypes.DWORD),
+        ("dwExtraInfo", ULONG_PTR),
+    ]
+
+
+class HARDWAREINPUT(ctypes.Structure):
+    _fields_ = [
+        ("uMsg", ctypes.wintypes.DWORD),
+        ("wParamL", ctypes.wintypes.WORD),
+        ("wParamH", ctypes.wintypes.WORD),
+    ]
+
+
+class _INPUTUNION(ctypes.Union):
+    _fields_ = [
+        ("ki", KEYBDINPUT),
+        ("mi", MOUSEINPUT),
+        ("hi", HARDWAREINPUT),
+    ]
+
+
+class INPUT(ctypes.Structure):
+    _anonymous_ = ("union",)
+    _fields_ = [
+        ("type", ctypes.wintypes.DWORD),
+        ("union", _INPUTUNION),
+    ]
+
+
+KEYEVENTF_KEYUP = 0x0002
+INPUT_KEYBOARD = 1
+
+
 @dataclass
 class WindowInfo:
     """Window information"""
@@ -311,7 +363,7 @@ class Win32API:
         
         self.user32.SendInput.argtypes = [
             ctypes.c_uint,
-            ctypes.POINTER(ctypes.c_ubyte),
+            ctypes.POINTER(INPUT),
             ctypes.c_int,
         ]
         self.user32.SendInput.restype = ctypes.c_uint
@@ -480,6 +532,37 @@ class Win32API:
     def _send_key_up(self, vk: int) -> None:
         """Send key up event"""
         self.user32.keybd_event(vk, 0, 0x0002, 0)
+
+    def send_vk(self, vk: int) -> None:
+        """Send a full key press for a virtual key code.
+
+        Use this instead of _send_key when the key is already a VK_* value;
+        _send_key only accepts printable characters.
+        """
+        self._send_key_down(vk)
+        self._send_key_up(vk)
+
+    def send_vk_combo(self, *vks: int) -> None:
+        """Press keys in order, then release them in reverse order."""
+        for vk in vks:
+            self._send_key_down(vk)
+        for vk in reversed(vks):
+            self._send_key_up(vk)
+
+    def send_input_vk(self, vk: int) -> None:
+        """Send a key press via SendInput, which is more widely trusted
+        than the legacy keybd_event API."""
+        events = (INPUT * 2)()
+        events[0].type = INPUT_KEYBOARD
+        events[0].ki.wVk = vk
+        events[1].type = INPUT_KEYBOARD
+        events[1].ki.wVk = vk
+        events[1].ki.dwFlags = KEYEVENTF_KEYUP
+        sent = self.user32.SendInput(len(events), events, ctypes.sizeof(INPUT))
+        if sent != len(events):
+            raise exceptions.WindowsError(
+                f"SendInput delivered {sent} of {len(events)} events for VK {vk}"
+            )
     
     def run_command(self, command: str, show: bool = True) -> None:
         """Run a shell command"""
@@ -528,6 +611,10 @@ class Win32API:
     
     def get_process_name(self, pid: int) -> str:
         """Get process name by PID"""
+        try:
+            import psutil
+        except ImportError:
+            return ""
         try:
             process = psutil.Process(pid)
             return process.name()
