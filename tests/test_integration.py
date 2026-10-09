@@ -354,6 +354,78 @@ class TestErrorHandlingIntegration:
         devices = capture.list_input_devices()
         assert isinstance(devices, list)
 
+    def test_capture_open_timeout_surfaces_audio_error(self):
+        """A hung audio driver raises instead of freezing the caller."""
+        import threading
+        from aiop.audio.capture import AudioCapture, AudioParameters, AudioFormat, AudioStream
+        from aiop.core.exceptions import AudioError
+
+        blocked = threading.Event()
+
+        class HungPa:
+            def open(self, **kwargs):
+                blocked.wait()
+                raise AssertionError("must not reach here after timeout")
+
+        class HungStream(AudioStream):
+            pass
+
+        audio = AudioCapture()
+        stream = AudioStream(
+            AudioParameters(sample_rate=16000, channels=1, device_index=1)
+        )
+        stream.pyaudio = HungPa()
+        stream._open_timeout = 0.3
+
+        with pytest.raises(AudioError, match="Timed out opening the microphone"):
+            stream.start()
+
+        assert stream.is_running is False
+        assert stream._opening is False
+        blocked.set()
+
+    def test_capture_open_error_propagates(self):
+        """An immediate open failure reports the driver error."""
+        from aiop.audio.capture import AudioParameters, AudioStream
+        from aiop.core.exceptions import AudioError
+
+        class FailingPa:
+            def open(self, **kwargs):
+                raise RuntimeError("no such device")
+
+        stream = AudioStream(
+            AudioParameters(sample_rate=16000, channels=1, device_index=1)
+        )
+        stream.pyaudio = FailingPa()
+
+        with pytest.raises(AudioError, match="no such device"):
+            stream.start()
+
+    def test_capture_open_success_path(self):
+        """A healthy device opens and the stream reports running."""
+        from aiop.audio.capture import AudioParameters, AudioStream
+
+        class FakeStream:
+            def start_stream(self):
+                pass
+
+        class WorkingPa:
+            def __init__(self):
+                self.stream = FakeStream()
+
+            def open(self, **kwargs):
+                return self.stream
+
+        stream = AudioStream(
+            AudioParameters(sample_rate=16000, channels=1, device_index=1)
+        )
+        stream.pyaudio = WorkingPa()
+
+        stream.start()
+
+        assert stream.is_running is True
+        assert stream.stream is not None
+
     def test_transcriber_start_failure_does_not_stick_running(self, monkeypatch):
         """A failed microphone start leaves transcription ready to retry."""
         from aiop.speech.transcriber import SpeechTranscriber, TranscriptionState
@@ -428,6 +500,147 @@ class TestErrorHandlingIntegration:
         assert results[0].text == "draft words"
         assert results[0].is_final is False
 
+    def test_partial_placeholder_is_not_shown_as_preview(self):
+        """Whisper's bracketed action tokens never reach the live preview."""
+        from aiop.speech.transcriber import SpeechTranscriber
+        import threading
+
+        results = []
+        transcriber = SpeechTranscriber.__new__(SpeechTranscriber)
+        transcriber.whisper_model = type(
+            "PreviewModel",
+            (),
+            {
+                "transcribe": lambda self, *args, **kwargs: "(music)",
+            },
+        )()
+        transcriber._transcription_lock = threading.Lock()
+        transcriber._is_running = True
+        transcriber._partial_generation = 0
+        transcriber._callbacks = [results.append]
+        transcriber.config = type(
+            "PreviewConfig",
+            (),
+            {"sample_rate": 16000, "language": "en", "translate": False, "temperature": 0.0},
+        )()
+
+        transcriber._run_partial(b"\x00" * 32000, 0.0, 0)
+
+        assert results == [], "silence placeholders must not be drawn as previews"
+
+    def test_partials_scheduled_during_continuous_recording(self):
+        """Live previews run in hold-to-talk sessions, not just VAD ones."""
+        import numpy as np
+        from aiop.audio.capture import AudioChunk, AudioFormat
+        from aiop.speech.transcriber import SpeechTranscriber, TranscriptionConfig, TranscriptionState
+
+        transcriber = SpeechTranscriber.__new__(SpeechTranscriber)
+        transcriber.continuous_recording = True
+        transcriber.state = TranscriptionState.IDLE
+        transcriber._is_running = True
+        transcriber._audio_buffer = []
+        transcriber._speech_start_time = None
+        transcriber._silence_frames = 0
+        transcriber._speech_frames = 0
+        transcriber._partial_interval = 0.0
+        transcriber._last_partial_at = 0.0
+        transcriber._partial_generation = 0
+        transcriber._partial_preview_seconds = 6.0
+        transcriber.config = TranscriptionConfig()
+        transcriber.whisper_model = object()
+
+        submitted = []
+
+        def fake_submit(fn, *args):
+            submitted.append(args)
+            return fn
+
+        transcriber._partial_executor = type(
+            "Executor", (), {"submit": fake_submit}
+        )()
+
+        class FakeProcessor:
+            def process_chunk(self, chunk):
+                return type("R", (), {"is_speech": True, "is_silent": False})()
+
+        transcriber.audio_processor = FakeProcessor()
+
+        tone = (4000 * np.sin(2 * np.pi * np.arange(16000) / 40)).astype(np.int16)
+        for i in range(0, len(tone) - 1024, 1024):
+            chunk = AudioChunk(
+                data=tone[i:i + 1024].tobytes(),
+                sample_rate=16000,
+                channels=1,
+                format=AudioFormat.INT16,
+            )
+            transcriber._process_audio_chunk(chunk)
+
+        assert submitted, "continuous recording must schedule live previews"
+
+    def test_partial_result_updates_live_preview_not_insertion(self):
+        """Non-final results paint the overlay and never trigger a paste."""
+        from aiop.speech.transcriber import TranscriptionResult
+        from aiop.ui.tray_app import TrayApp
+
+        class PreviewOverlay:
+            def __init__(self):
+                self.preview = []
+                self.feedback = []
+
+            def set_live_preview(self, text):
+                self.preview.append(text)
+
+            def clear_live_preview(self):
+                self.preview.append("")
+
+            def set_feedback(self, message, success=True):
+                self.feedback.append((message, success))
+
+        tray = TrayApp.__new__(TrayApp)
+        tray.overlay = PreviewOverlay()
+        tray.transcriber = type(
+            "RunningTranscriber", (), {"is_running": lambda self: True}
+        )()
+
+        tray._on_transcription_result(
+            TranscriptionResult(text="draft words", is_final=False)
+        )
+
+        assert tray.overlay.preview == ["draft words"]
+        assert tray.overlay.feedback == []
+
+    def test_stale_partial_is_dropped_after_session_ends(self):
+        """A preview landing after stop() must not clobber the final text."""
+        from aiop.speech.transcriber import TranscriptionResult
+        from aiop.ui.tray_app import TrayApp
+
+        class PreviewOverlay:
+            def __init__(self):
+                self.preview = []
+                self.feedback = []
+
+            def set_live_preview(self, text):
+                self.preview.append(text)
+
+            def clear_live_preview(self):
+                self.preview.append("")
+
+            def set_feedback(self, message, success=True):
+                self.feedback.append((message, success))
+
+        tray = TrayApp.__new__(TrayApp)
+        tray.overlay = PreviewOverlay()
+        tray.transcriber = type(
+            "StoppedTranscriber", (), {"is_running": lambda self: False}
+        )()
+
+        tray._on_transcription_result(
+            TranscriptionResult(text="stale draft", is_final=False)
+        )
+
+        assert tray.overlay.preview == []
+        assert tray.overlay.feedback == []
+
     def test_transcription_status_result_is_actionable(self):
         """Empty final results carry a reason for user-facing feedback."""
         from aiop.speech.transcriber import SpeechTranscriber
@@ -457,21 +670,41 @@ class TestErrorHandlingIntegration:
         assert result.message == "No focused application"
 
     def test_action_router_reports_clipboard_failure(self, monkeypatch):
-        """Insertion reports clipboard failures without sending a paste key."""
+        """Clipboard failure falls back to typing the text directly."""
         from aiop.windows.actions import ActionRouter
 
         clipboard = Mock()
         clipboard.set_text.return_value = False
         win32 = Mock()
         win32.get_foreground_window.return_value = 123
+        win32.set_foreground_window.return_value = True
+        monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
+        monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
+
+        result = ActionRouter().route("hello world")
+
+        assert result.success is True
+        assert result.message == "Dictation typed"
+        win32.send_paste.assert_not_called()
+        win32.type_text.assert_called_once()
+
+    def test_action_router_clipboard_and_typing_both_fail(self, monkeypatch):
+        """When neither paste nor typing works the failure is reported."""
+        from aiop.windows.actions import ActionRouter
+
+        clipboard = Mock()
+        clipboard.set_text.return_value = False
+        win32 = Mock()
+        win32.get_foreground_window.return_value = 123
+        win32.set_foreground_window.return_value = True
+        win32.type_text.side_effect = RuntimeError("no input")
         monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
         monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
 
         result = ActionRouter().route("hello world")
 
         assert result.success is False
-        assert result.message == "Could not copy dictation"
-        win32.send_vk_combo.assert_not_called()
+        assert result.message == "Could not insert dictation"
 
     def test_action_router_reports_focus_restore_failure(self, monkeypatch):
         """Insertion fails clearly when the captured app cannot be restored."""
@@ -480,6 +713,7 @@ class TestErrorHandlingIntegration:
         clipboard = Mock()
         clipboard.set_text.return_value = True
         win32 = Mock()
+        win32.get_foreground_window.return_value = 999
         win32.set_foreground_window.return_value = False
         monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
         monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
@@ -488,24 +722,26 @@ class TestErrorHandlingIntegration:
 
         assert result.success is False
         assert result.message == "Could not restore focused application"
-        win32.send_vk_combo.assert_not_called()
+        win32.send_paste.assert_not_called()
 
     def test_action_router_reports_paste_failure(self, monkeypatch):
-        """Insertion reports keyboard injection failures without claiming success."""
+        """A failed paste falls back to typing the text directly."""
         from aiop.windows.actions import ActionRouter
 
         clipboard = Mock()
         clipboard.set_text.return_value = True
         win32 = Mock()
+        win32.get_foreground_window.return_value = 123
         win32.set_foreground_window.return_value = True
-        win32.send_vk_combo.side_effect = RuntimeError("paste unavailable")
+        win32.send_paste.side_effect = RuntimeError("paste unavailable")
         monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
         monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
 
         result = ActionRouter().route("hello world", target_window=123)
 
-        assert result.success is False
-        assert result.message == "Could not insert dictation"
+        assert result.success is True
+        assert result.message == "Dictation typed"
+        win32.type_text.assert_called_once()
 
     def test_action_router_rejects_whitespace_only_text(self):
         """Whitespace-only speech is not treated as an insertion request."""
@@ -584,6 +820,12 @@ class TestErrorHandlingIntegration:
             def set_feedback(self, message, success=True):
                 self.feedback.append((message, success))
 
+            def clear_live_preview(self):
+                pass
+
+            def set_live_preview(self, text):
+                pass
+
         tray = TrayApp.__new__(TrayApp)
         tray.overlay = FeedbackOverlay()
         tray._dictation_target_window = 123
@@ -592,7 +834,7 @@ class TestErrorHandlingIntegration:
         tray._on_transcription_result(TranscriptionResult(text="", is_final=True, status="too_short"))
 
         assert tray.overlay.feedback == [
-            ("I didn't hear anything. Hold the shortcut and speak.", False),
+            ("I didn't hear anything. Tap the shortcut and speak.", False),
             ("That was too short. Keep speaking a little longer.", False),
         ]
         assert tray._dictation_target_window is None
@@ -605,7 +847,13 @@ class TestErrorHandlingIntegration:
         clipboard.set_text.return_value = True
         win32 = Mock()
         win32.get_foreground_window.return_value = 999
-        win32.set_foreground_window.return_value = True
+
+        def focus(handle):
+            # SetForegroundWindow takes effect: the foreground becomes it.
+            win32.get_foreground_window.return_value = handle
+            return True
+
+        win32.set_foreground_window.side_effect = focus
         monkeypatch.setattr("aiop.windows.actions.get_clipboard", lambda: clipboard)
         monkeypatch.setattr("aiop.windows.actions.get_win32_api", lambda: win32)
 
@@ -613,7 +861,7 @@ class TestErrorHandlingIntegration:
 
         assert result.success is True
         win32.set_foreground_window.assert_called_once_with(123)
-        win32.send_vk_combo.assert_called_once_with(0x11, 0x56)
+        win32.send_paste.assert_called_once()
 
     @pytest.mark.skip(reason="Requires a desktop Qt display")
     def test_overlay_supports_hold_to_talk(self):
