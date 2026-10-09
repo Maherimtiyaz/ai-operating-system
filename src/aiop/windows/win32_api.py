@@ -270,7 +270,14 @@ class INPUT(ctypes.Structure):
 
 
 KEYEVENTF_KEYUP = 0x0002
+KEYEVENTF_UNICODE = 0x0004
+KEYEVENTF_SCANCODE = 0x0008
 INPUT_KEYBOARD = 1
+
+# Set-1 scan codes for the physical keys. With KEYEVENTF_SCANCODE the system
+# maps them through the active keyboard layout, unlike a bare virtual key.
+SCAN_LCONTROL = 0x1D
+SCAN_V = 0x2F
 
 
 @dataclass
@@ -333,6 +340,25 @@ class Win32API:
         
         self.user32.SetForegroundWindow.argtypes = [ctypes.wintypes.HWND]
         self.user32.SetForegroundWindow.restype = ctypes.c_bool
+
+        self.user32.AttachThreadInput.argtypes = [
+            ctypes.wintypes.DWORD,
+            ctypes.wintypes.DWORD,
+            ctypes.wintypes.BOOL,
+        ]
+        self.user32.AttachThreadInput.restype = ctypes.c_bool
+
+        self.user32.BringWindowToTop.argtypes = [ctypes.wintypes.HWND]
+        self.user32.BringWindowToTop.restype = ctypes.c_bool
+
+        self.user32.IsIconic.argtypes = [ctypes.wintypes.HWND]
+        self.user32.IsIconic.restype = ctypes.c_bool
+
+        self.user32.ShowWindow.argtypes = [
+            ctypes.wintypes.HWND,
+            ctypes.c_int,
+        ]
+        self.user32.ShowWindow.restype = ctypes.c_bool
         
         self.user32.FindWindowW.argtypes = [
             ctypes.wintypes.LPCWSTR,
@@ -427,6 +453,67 @@ class Win32API:
     def set_foreground_window(self, hwnd: int) -> bool:
         """Set foreground window"""
         return self.user32.SetForegroundWindow(hwnd)
+
+    def is_key_pressed(self, vk: int) -> bool:
+        """Whether a virtual key is currently physically down."""
+        return bool(self.user32.GetAsyncKeyState(vk) & 0x8000)
+
+    def force_foreground(self, hwnd: int) -> bool:
+        """Bring ``hwnd`` to the foreground despite the Windows focus lock.
+
+        SetForegroundWindow alone silently returns True without moving focus
+        when the calling process does not own the foreground right (the normal
+        case after a hotkey-triggered session). This combines the classic
+        workarounds - restoring minimized windows, temporarily attaching input
+        queues, an ALT key nudge, BringWindowToTop - and reports success only
+        when the foreground actually changes.
+        """
+        if not hwnd:
+            return False
+        try:
+            if self.user32.IsIconic(hwnd):
+                self.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+        except OSError:
+            pass
+
+        if self.user32.GetForegroundWindow() == hwnd:
+            return True
+
+        current_pid = ctypes.wintypes.DWORD()
+        current_tid = self.user32.GetWindowThreadProcessId(
+            self.user32.GetForegroundWindow(), ctypes.byref(current_pid)
+        )
+        target_pid = ctypes.wintypes.DWORD()
+        target_tid = self.user32.GetWindowThreadProcessId(
+            hwnd, ctypes.byref(target_pid)
+        )
+        my_tid = self.kernel32.GetCurrentThreadId()
+
+        attached = False
+        if target_tid and current_tid:
+            try:
+                attached = self.user32.AttachThreadInput(
+                    target_tid, current_tid, True
+                )
+            except OSError:
+                attached = False
+        try:
+            if attached:
+                self.user32.SetForegroundWindow(hwnd)
+        finally:
+            if attached:
+                self.user32.AttachThreadInput(target_tid, current_tid, False)
+
+        if self.user32.SetForegroundWindow(hwnd):
+            # The ALT-key trick: the system briefly lifts the focus lock after
+            # an injected ALT press, letting the foreground switch land.
+            self.user32.keybd_event(VirtualKey.VK_MENU.value, 0, 0, 0)
+            self.user32.keybd_event(
+                VirtualKey.VK_MENU.value, 0, KEYEVENTF_KEYUP, 0
+            )
+            self.user32.SetForegroundWindow(hwnd)
+        self.user32.BringWindowToTop(hwnd)
+        return self.user32.GetForegroundWindow() == hwnd
     
     def find_window(self, class_name: str = None, window_name: str = None) -> Optional[int]:
         """Find window by class name or window name"""
@@ -558,11 +645,63 @@ class Win32API:
         events[1].type = INPUT_KEYBOARD
         events[1].ki.wVk = vk
         events[1].ki.dwFlags = KEYEVENTF_KEYUP
-        sent = self.user32.SendInput(len(events), events, ctypes.sizeof(INPUT))
-        if sent != len(events):
+        self._send_input_events(events, len(events))
+
+    def _send_input_events(self, events, count: int) -> None:
+        """Push a prepared INPUT batch through SendInput, all or nothing."""
+        sent = self.user32.SendInput(count, events, ctypes.sizeof(INPUT))
+        if sent != count:
             raise exceptions.WindowsError(
-                f"SendInput delivered {sent} of {len(events)} events for VK {vk}"
+                f"SendInput delivered {sent} of {count} events"
             )
+
+    def send_paste(self) -> None:
+        """Send Ctrl+V as one atomic SendInput batch.
+
+        Four separate keybd_event calls leave a window where another thread's
+        input lands between the Ctrl press and the V press and corrupts the
+        chord, and events with a zero scancode are ignored by some
+        applications. Scan codes plus a single batch avoid both.
+        """
+        sequence = [
+            (SCAN_LCONTROL, 0),
+            (SCAN_V, 0),
+            (SCAN_V, KEYEVENTF_KEYUP),
+            (SCAN_LCONTROL, KEYEVENTF_KEYUP),
+        ]
+        events = (INPUT * len(sequence))()
+        for index, (scan, flags) in enumerate(sequence):
+            events[index].type = INPUT_KEYBOARD
+            events[index].ki.wVk = 0
+            events[index].ki.wScan = scan
+            events[index].ki.dwFlags = flags | KEYEVENTF_SCANCODE
+        self._send_input_events(events, len(sequence))
+
+    def type_text(self, text: str) -> None:
+        """Type text at the caret with unicode SendInput events.
+
+        Unlike :meth:`send_keys`, punctuation, spaces and non-ASCII
+        characters survive, because each character travels as KEYEVENTF_UNICODE
+        instead of a virtual-key mapping.
+        """
+        if not text:
+            return
+        # 64 characters per call keeps each batch at 128 events, well inside
+        # what SendInput copies in one shot.
+        for start in range(0, len(text), 64):
+            chunk = text[start : start + 64]
+            events = (INPUT * (len(chunk) * 2))()
+            for index, char in enumerate(chunk):
+                code = ord(char)
+                down = events[index * 2]
+                down.type = INPUT_KEYBOARD
+                down.ki.wScan = code
+                down.ki.dwFlags = KEYEVENTF_UNICODE
+                up = events[index * 2 + 1]
+                up.type = INPUT_KEYBOARD
+                up.ki.wScan = code
+                up.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP
+            self._send_input_events(events, len(chunk) * 2)
     
     def run_command(self, command: str, show: bool = True) -> None:
         """Run a shell command"""
