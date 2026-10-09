@@ -10,6 +10,7 @@ pump thread. Two real bugs landed here:
   detection unreliable.
 """
 
+import ctypes
 import sys
 import threading
 import time
@@ -130,3 +131,35 @@ def test_restart_after_stop_reinstalls(hook):
     assert wait_for(lambda: (VK_F24, True) in events), "no event after restart"
     send_key(VK_F24, False)
     assert wait_for(lambda: (VK_F24, False) in events)
+
+
+def test_swallowed_key_is_still_delivered_but_blocked(hook):
+    """Swallowing must hide Enter from the app, not from the callback."""
+    from aiop.windows.key_hook import KBDLLHOOKSTRUCT, WM_KEYDOWN
+
+    events = []
+    hook.watch(VK_F24)
+    hook.on_key = lambda vk, is_down: events.append((vk, is_down))
+    hook.swallow(VK_F24)
+    assert hook.swallowed == {VK_F24}
+
+    info = KBDLLHOOKSTRUCT(vkCode=VK_F24)
+    blocked = hook._hook_proc(0, WM_KEYDOWN, ctypes.pointer(info))
+
+    assert blocked == 1, "a swallowed key must not reach other applications"
+    assert events == [(VK_F24, True)], "the callback must still see the key"
+
+    hook.unswallow(VK_F24)
+    assert hook.swallowed == set()
+    hook.unswallow(VK_F24)  # absent key is not an error
+
+
+def test_stop_clears_swallowed_keys(hook):
+    """A reinstalled hook must not keep eating keys from an old session."""
+    hook.watch(VK_F24)
+    hook.swallow(VK_F24)
+    assert hook.start() is True
+
+    hook.stop()
+
+    assert hook.swallowed == set()

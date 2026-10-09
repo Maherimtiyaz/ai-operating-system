@@ -8,9 +8,12 @@ entirely and the recording hangs until ``max_speech_duration``.
 ``WH_KEYBOARD_LL`` delivers both edges as they happen. The hook is installed
 on its own thread with its own message pump so delivery never depends on Qt.
 
-The hook is observe-only: it never swallows input. ``RegisterHotKey`` remains
-responsible for capturing the combo, so there is no change to what reaches
-the focused application.
+By default the hook is observe-only: it never swallows input, and
+``RegisterHotKey`` remains responsible for capturing the combo. Keys can be
+explicitly marked with :meth:`KeyHook.swallow` while a dictation is armed, so
+the "Enter to finish" gesture stops the recording instead of typing a newline
+into the focused application. Swallowing is always scoped and undone by the
+caller.
 """
 
 import ctypes
@@ -84,6 +87,7 @@ class KeyHook:
     def __init__(self) -> None:
         self.on_key: Optional[KeyCallback] = None
         self._watched: Set[int] = set()
+        self._swallowed: Set[int] = set()
         self._watch_lock = threading.Lock()
         self._thread: Optional[threading.Thread] = None
         self._thread_id: Optional[int] = None
@@ -134,6 +138,12 @@ class KeyHook:
         with self._watch_lock:
             return set(self._watched)
 
+    @property
+    def swallowed(self) -> Set[int]:
+        """Keys currently blocked from reaching other applications."""
+        with self._watch_lock:
+            return set(self._swallowed)
+
     def watch(self, vk_code: int) -> None:
         with self._watch_lock:
             self._watched.add(int(vk_code))
@@ -141,6 +151,20 @@ class KeyHook:
     def unwatch(self, vk_code: int) -> None:
         with self._watch_lock:
             self._watched.discard(int(vk_code))
+
+    def swallow(self, vk_code: int) -> None:
+        """Block a key from reaching other applications until :meth:`unswallow`.
+
+        Only use this for keys whose side effect must be suppressed (Enter
+        finishing a dictation). The key is still delivered to ``on_key`` so
+        the callback that armed the swallow can react to it.
+        """
+        with self._watch_lock:
+            self._swallowed.add(int(vk_code))
+
+    def unswallow(self, vk_code: int) -> None:
+        with self._watch_lock:
+            self._swallowed.discard(int(vk_code))
 
     def start(self) -> bool:
         """Install the hook on a dedicated thread. Returns success."""
@@ -183,6 +207,10 @@ class KeyHook:
         self._hook = None
         self._installed = False
         self._ready.clear()
+        # Nothing is installed, so nothing can be blocked; leaving a swallow
+        # armed here would silently eat that key after a reinstall.
+        with self._watch_lock:
+            self._swallowed.clear()
 
     # ------------------------------------------------------------------
     # Hook thread
@@ -239,14 +267,22 @@ class KeyHook:
                     vk = int(info.vkCode)
 
                     with self._watch_lock:
-                        watched = vk in self._watched
+                        swallowed = vk in self._swallowed
+                        watched = vk in self._watched or swallowed
 
                     if watched and self.on_key is not None:
-                        # Deliver outside the lock and swallow nothing.
+                        # Deliver outside the lock; by default nothing is
+                        # swallowed, so input reaches the focused app.
                         try:
                             self.on_key(vk, message in DOWN_MESSAGES)
                         except Exception as error:
                             logger.error("Key callback failed: %s", error)
+
+                    if swallowed:
+                        # Returning nonzero without calling the next hook
+                        # drops the event: the focused application never sees
+                        # the key that finished the dictation.
+                        return 1
         except Exception as error:  # pragma: no cover - a raising hook proc
             logger.error("Keyboard hook error: %s", error)  # would be fatal
 
