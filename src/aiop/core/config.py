@@ -41,7 +41,9 @@ class WindowsConfig:
     start_on_boot: bool = True
     run_in_tray: bool = True
     minimize_to_tray: bool = True
-    hold_to_talk: bool = True
+    # Tap the shortcut to start, Enter (or the shortcut again) to finish.
+    # Holding the shortcut remains an option in the settings dialog.
+    hold_to_talk: bool = False
     
 
 @dataclass

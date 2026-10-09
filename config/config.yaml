@@ -55,4 +55,4 @@ windows:
   minimize_to_tray: true
   run_in_tray: true
   start_on_boot: true
-  hold_to_talk: true
+  hold_to_talk: false

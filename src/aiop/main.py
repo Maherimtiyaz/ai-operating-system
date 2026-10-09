@@ -54,7 +54,8 @@ def setup_environment() -> None:
     
     # Set up logging
     log_dir = utils.get_logs_dir()
-    logging.setup_logging(log_dir=str(log_dir), log_level="INFO")
+    log_level = os.environ.get("AIOP_LOG_LEVEL", "INFO")
+    logging.setup_logging(log_dir=str(log_dir), log_level=log_level)
     
     # Load configuration
     config_dir = utils.get_config_dir()

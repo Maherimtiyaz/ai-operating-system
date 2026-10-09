@@ -46,8 +46,11 @@ class AIOPLogger:
         logger = logging.getLogger(self.name)
         logger.setLevel(self.log_level)
 
-        # Prevent duplicate handlers
+        # Prevent duplicate handlers but ensure correct level
         if logger.handlers:
+            logger.setLevel(self.log_level)
+            for h in logger.handlers:
+                h.setLevel(self.log_level)
             return logger
 
         # Create log directory
