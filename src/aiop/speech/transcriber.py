@@ -2,6 +2,7 @@
 Speech transcriber for AIOP
 """
 
+import re
 import time
 import threading
 from pathlib import Path
@@ -9,11 +10,16 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Callable, List
 from dataclasses import dataclass
 from enum import Enum
+import numpy as np
 from ..core import logging, exceptions
 from ..audio import AudioCapture, AudioChunk, get_audio_processor
 from .whisper_cpp import WhisperModel, get_whisper_model
 
 logger = logging.get_logger(__name__)
+
+# Whisper renders non-speech as bracketed action tokens. They carry no words,
+# so they are filtered out of live previews instead of being drawn like text.
+_PLACEHOLDER_RE = re.compile(r"^\([a-z ]+\)$", re.IGNORECASE)
 
 
 class TranscriptionState(Enum):
@@ -34,24 +40,25 @@ class TranscriptionResult:
     language: Optional[str] = None
     is_final: bool = False
     status: Optional[str] = None
+    # Monotonic session counter captured when the audio was buffered. A final
+    # result carrying an older generation belongs to a session that has since
+    # been replaced; consumers use it to avoid pasting into the wrong window.
+    generation: int = 0
     
 
 @dataclass
 class TranscriptionConfig:
-    """Transcription configuration"""
+    """Configuration for speech transcription"""
     model_name: str = "base.en"
-    language: Optional[str] = None
+    language: str = "en"
     sample_rate: int = 16000
     chunk_size: int = 1024
     vad_enabled: bool = True
-    vad_aggressiveness: int = 3
-    silence_threshold: float = 0.5  # seconds
-    min_speech_duration: float = 0.3  # seconds
-    max_speech_duration: float = 30.0  # seconds
-    # Consecutive non-speech chunks required before an utterance is closed.
-    # VAD flickers on breaths and mid-sentence pauses; ending on the first
-    # such frame would discard every utterance as "too_short".
-    silence_end_frames: int = 4
+    vad_aggressiveness: int = 1  # 0-3, lower is more sensitive
+    silence_threshold: float = 0.01  # RMS threshold
+    min_speech_duration: float = 0.1  # seconds
+    max_speech_duration: float = 30.0
+    silence_end_frames: int = 10  # frames of silence to end
     translate: bool = False
     temperature: float = 0.0
     use_streaming: bool = True
@@ -76,6 +83,9 @@ class SpeechTranscriber:
         self._partial_interval = 1.0
         self._last_partial_at = 0.0
         self._partial_generation = 0
+        # Sliding window for live previews: buffers grow for the whole session,
+        # and re-transcribing all of it every interval would scale badly.
+        self._partial_preview_seconds = 6.0
         self._transcription_lock = threading.Lock()
         self._partial_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aiop-partial")
         # Final transcription runs here instead of on whichever thread called
@@ -84,6 +94,14 @@ class SpeechTranscriber:
         # starved the capture buffer.
         self._final_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aiop-final")
         self._closed = False
+        # Bumped on every start(); finals capture the value at buffer time so a
+        # slow whisper result for an ended session cannot be pasted into the
+        # target window of a session that has started since.
+        self._generation = 0
+        # Hold-to-talk records from the first frame to the release instead of
+        # waiting for VAD to declare speech; VAD gating was swallowing quiet
+        # openers and producing empty buffers (nothing to type).
+        self.continuous_recording = False
         self._setup_components()
 
     @staticmethod
@@ -156,6 +174,17 @@ class SpeechTranscriber:
             return
 
         if self.state == TranscriptionState.IDLE:
+            if self.continuous_recording:
+                # Hold-to-talk: record every frame while the key is down and
+                # decide on the buffer when stop() arrives.
+                self._speech_start_time = time.time()
+                self._audio_buffer = [audio_chunk.data]
+                self._silence_frames = 0
+                self._speech_frames = 1
+                self.state = TranscriptionState.LISTENING
+                logger.debug("Continuous recording started (hold-to-talk)")
+                return
+
             # Check for speech start
             result = self.audio_processor.process_chunk(audio_chunk)
 
@@ -170,6 +199,8 @@ class SpeechTranscriber:
         elif self.state == TranscriptionState.LISTENING:
             # Continue recording
             self._audio_buffer.append(audio_chunk.data)
+            # Both modes show a live preview of what whisper hears so far;
+            # partials update the overlay while the user keeps speaking.
             self._maybe_emit_partial()
 
             # Check for speech end
@@ -194,6 +225,13 @@ class SpeechTranscriber:
                 self._process_buffer()
                 return
 
+            if self.continuous_recording:
+                # Hold-to-talk: never auto-finalize mid-hold; stop() decides.
+                if duration >= self.config.max_speech_duration:
+                    self.state = TranscriptionState.PROCESSING
+                    self._process_buffer()
+                return
+
             if self._silence_frames < self.config.silence_end_frames:
                 return
 
@@ -211,7 +249,7 @@ class SpeechTranscriber:
                 self._process_buffer()
             else:
                 # Not enough speech, reset
-                self._emit_status("too_short")
+                self._emit_status("too_short", self._generation)
                 self._reset_buffer()
         
         elif self.state == TranscriptionState.PROCESSING:
@@ -226,27 +264,67 @@ class SpeechTranscriber:
         """
         audio_data = b"".join(self._audio_buffer)
         start_time = self._speech_start_time or 0.0
+        generation = self._generation
         self._reset_buffer()
 
         if not audio_data:
-            self._emit_status("no_speech")
+            self._emit_status("no_speech", generation)
             return
 
         if not self.whisper_model:
             logger.error("Cannot transcribe: Whisper model is unavailable")
-            self._emit_status("transcription_error")
+            self._emit_status("transcription_error", generation)
             return
 
         self._final_executor.submit(
-            self._run_final_transcription, audio_data, start_time
+            self._run_final_transcription, audio_data, start_time, generation
         )
 
-    def _run_final_transcription(self, audio_data: bytes, start_time: float) -> None:
+    @staticmethod
+    def _trim_silence(audio_data: bytes, sample_rate: int) -> bytes:
+        """Drop leading and trailing silence before whisper sees the audio.
+
+        Tap-once (and hold-to-talk) record from the gesture, so the buffer
+        always opens with dead air; whisper treats long silence as a cue to
+        hallucinate a greeting or a foreign-language aside. Only voiced
+        frames plus a short margin survive.
+        """
+        samples = np.frombuffer(audio_data, dtype=np.int16)
+        frame = max(1, int(sample_rate * 0.03))
+        frames = samples.size // frame
+        if frames < 2:
+            return audio_data
+
+        grid = samples[: frames * frame].reshape(frames, frame).astype(np.float64)
+        rms = np.sqrt(np.mean(grid * grid, axis=1))
+        peak = float(rms.max())
+        if peak <= 0.0:
+            return audio_data
+
+        voiced = np.flatnonzero(rms > max(peak * 0.1, 50.0))
+        if voiced.size == 0:
+            return audio_data
+
+        margin = 5  # 150 ms of context on each side of the voiced span
+        start = max(0, int(voiced[0]) - margin) * frame
+        end = min(samples.size, (int(voiced[-1]) + margin + 1) * frame)
+        return samples[start:end].tobytes()
+
+    def _run_final_transcription(
+        self, audio_data: bytes, start_time: float, generation: int
+    ) -> None:
         """Transcribe detached audio and notify callbacks. Worker thread only."""
         try:
+            trimmed = self._trim_silence(audio_data, self.config.sample_rate)
+            if trimmed != audio_data:
+                logger.debug(
+                    "Trimmed silence before transcription: %.2fs -> %.2fs",
+                    len(audio_data) / 2 / self.config.sample_rate,
+                    len(trimmed) / 2 / self.config.sample_rate,
+                )
             with self._transcription_lock:
                 text = self.whisper_model.transcribe(
-                    audio_data,
+                    trimmed,
                     sample_rate=self.config.sample_rate,
                     language=self.config.language,
                     translate=self.config.translate,
@@ -261,6 +339,7 @@ class SpeechTranscriber:
                 language=self.config.language,
                 is_final=True,
                 status="complete",
+                generation=generation,
             )
 
             self._last_transcription = result
@@ -275,10 +354,12 @@ class SpeechTranscriber:
 
         except Exception as e:
             logger.error(f"Transcription error: {e}")
-            self._emit_status("transcription_error")
+            self._emit_status("transcription_error", generation)
 
-    def _emit_status(self, status: str) -> None:
-        result = TranscriptionResult(text="", is_final=True, status=status)
+    def _emit_status(self, status: str, generation: int = 0) -> None:
+        result = TranscriptionResult(
+            text="", is_final=True, status=status, generation=generation
+        )
         for callback in self._callbacks:
             try:
                 callback(result)
@@ -294,7 +375,14 @@ class SpeechTranscriber:
         if now - self._last_partial_at < self._partial_interval:
             return
 
-        audio_data = b"".join(self._audio_buffer)
+        # Only the recent window is transcribed: the buffer spans the whole
+        # session, and feeding all of it to whisper every interval would grow
+        # quadratically and delay the final result.
+        chunk = self.config.chunk_size
+        window_chunks = max(
+            1, int(self._partial_preview_seconds * self.config.sample_rate // chunk)
+        )
+        audio_data = b"".join(self._audio_buffer[-window_chunks:])
         duration = len(audio_data) / 2 / self.config.sample_rate
         if duration < self._partial_interval:
             return
@@ -317,9 +405,12 @@ class SpeechTranscriber:
     ) -> None:
         """Transcribe a preview and emit it only if the utterance is current."""
         try:
+            trimmed = self._trim_silence(audio_data, self.config.sample_rate)
+            if not trimmed:
+                return
             with self._transcription_lock:
                 text = self.whisper_model.transcribe(
-                    audio_data,
+                    trimmed,
                     sample_rate=self.config.sample_rate,
                     language=self.config.language,
                     translate=self.config.translate,
@@ -327,6 +418,11 @@ class SpeechTranscriber:
                 )
 
             if not text or not self._is_running or generation != self._partial_generation:
+                return
+
+            # A window of pure silence decodes to a bracketed placeholder;
+            # previews should only ever show words.
+            if _PLACEHOLDER_RE.match(text.strip()):
                 return
 
             result = TranscriptionResult(
@@ -385,7 +481,8 @@ class SpeechTranscriber:
             raise
 
         self._is_running = True
-        logger.info("Transcription started")
+        self._generation += 1
+        logger.info("Transcription started (session %d)", self._generation)
 
     def stop(self) -> None:
         """Stop transcription.
@@ -399,6 +496,12 @@ class SpeechTranscriber:
             return
 
         self._is_running = False
+        # If we have audio buffer but state is IDLE (speech never triggered VAD
+        # strongly enough), still try to process it - be lenient for hold-to-talk.
+        if self._audio_buffer and self.state == TranscriptionState.IDLE:
+            self._process_buffer()
+            logger.info("Transcription stopped (processing buffered audio)")
+            return
         self._process_buffer()
         logger.info("Transcription stopped")
 
@@ -496,6 +599,11 @@ class SpeechTranscriber:
     def is_running(self) -> bool:
         """Check if transcription is running"""
         return self._is_running
+
+    @property
+    def generation(self) -> int:
+        """Session counter of the most recently started dictation."""
+        return self._generation
     
     def get_state(self) -> TranscriptionState:
         """Get current transcription state"""

@@ -43,7 +43,7 @@ def feed(t: SpeechTranscriber, samples: np.ndarray):
     t._speech_start_time = None
     t._silence_frames = 0
     t._speech_frames = 0
-    # The transcriber keeps the audio stream warm and gates on _is_running.
+# The transcriber keeps the audio stream warm and gates on _is_running.
     t._is_running = True
 
     statuses = []
@@ -55,9 +55,9 @@ def feed(t: SpeechTranscriber, samples: np.ndarray):
         buffer_calls.append(len(t._audio_buffer))
         return orig_buffer()
 
-    def spy_status(msg):
+    def spy_status(msg, *args):
         statuses.append(msg)
-        return orig_status(msg)
+        return orig_status(msg, *args)
 
     t._process_buffer = spy_buffer
     t._emit_status = spy_status
@@ -188,3 +188,33 @@ class TestBufferReset:
         _, status, calls = feed(t, samples)
 
         assert len(calls) == 1
+
+
+class TestSilenceTrimming:
+    """Tap-once records from the gesture, so buffers always open with dead air.
+
+    Whisper treats long silence as a cue to hallucinate ("Hello, ..." before
+    the actual words), so leading and trailing silence never reach the model.
+    """
+
+    def test_leading_and_trailing_silence_are_dropped(self):
+        audio = np.concatenate(
+            [silence(2.0), speech_tone(1.0), silence(2.0)]
+        ).tobytes()
+
+        trimmed = SpeechTranscriber._trim_silence(audio, SR)
+
+        trimmed_seconds = len(trimmed) / 2 / SR
+        assert 1.0 < trimmed_seconds < 1.6, trimmed_seconds
+        samples = np.frombuffer(trimmed, dtype=np.int16)
+        assert np.abs(samples).max() > 1000, "the voiced span must survive"
+
+    def test_pure_silence_is_left_untouched(self):
+        audio = silence(2.0).tobytes()
+
+        assert SpeechTranscriber._trim_silence(audio, SR) == audio
+
+    def test_tiny_buffers_are_left_untouched(self):
+        audio = b"\x00\x00"
+
+        assert SpeechTranscriber._trim_silence(audio, SR) == audio
