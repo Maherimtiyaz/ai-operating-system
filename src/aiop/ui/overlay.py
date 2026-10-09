@@ -70,29 +70,45 @@ class ListeningButton(QPushButton):
         self.update()
 
     def paintEvent(self, event) -> None:
+        import math
+
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         center = self.rect().center()
 
         if self._listening:
-            pulse = 2.0 + (1.0 + __import__("math").sin(self._phase)) * 2.0
-            painter.setPen(QPen(QColor(232, 112, 102, 90), 2.0))
-            painter.drawEllipse(center, int(27 + pulse), int(27 + pulse))
             fill = QColor("#e07066")
             icon = QColor("#ffffff")
+
+            # Animated waveform bars (WhisperFlow-like)
+            for i in range(6):
+                offset = i - 2.5
+                height = 16 + math.sin(self._phase + i * 0.5) * 8
+                width_bar = 3
+                x = center.x() + int(offset * 6)
+                y = center.y() - int(height / 2)
+                painter.setBrush(QBrush(QColor(255, 255, 255, 180)))
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.drawRoundedRect(x - 1, y, width_bar, int(height), 1, 1)
+
+            # Outer pulse ring
+            pulse = 2.0 + (1.0 + math.sin(self._phase)) * 2.0
+            painter.setPen(QPen(QColor(232, 112, 102, 90), 2.0))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawEllipse(center, int(27 + pulse), int(27 + pulse))
         else:
             fill = QColor("#27313a")
             icon = QColor("#dce5ec")
+            painter.setPen(QPen(QColor(255, 255, 255, 28), 1.0))
+            painter.setBrush(QBrush(fill))
+            painter.drawEllipse(center, 27, 27)
 
-        painter.setPen(QPen(QColor(255, 255, 255, 28), 1.0))
-        painter.setBrush(QBrush(fill))
-        painter.drawEllipse(center, 27, 27)
-
-        painter.setPen(QPen(icon, 2.4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        painter.drawRoundedRect(center.x() - 6, center.y() - 14, 12, 21, 6, 6)
-        painter.drawArc(center.x() - 12, center.y() - 7, 24, 22, 200 * 16, 140 * 16)
-        painter.drawLine(center.x(), center.y() + 15, center.x(), center.y() + 20)
-        painter.drawLine(center.x() - 7, center.y() + 20, center.x() + 7, center.y() + 20)
+            # Microphone icon
+            painter.setPen(QPen(icon, 2.4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            painter.drawRoundedRect(center.x() - 6, center.y() - 14, 12, 21, 6, 6)
+            painter.drawArc(center.x() - 12, center.y() - 7, 24, 22, 200 * 16, 140 * 16)
+            painter.drawLine(center.x(), center.y() + 15, center.x(), center.y() + 20)
+            painter.drawLine(center.x() - 7, center.y() + 20, center.x() + 7, center.y() + 20)
 
 
 class DictationOverlay(QWidget):
@@ -122,6 +138,7 @@ class DictationOverlay(QWidget):
         self._auto_hide_timer = QTimer(self)
         self._auto_hide_timer.timeout.connect(self._on_auto_hide)
         self._auto_hide_timer.setSingleShot(True)
+        self._user_positioned = False
         
         # Callbacks
         self._on_transcription_callbacks = []
@@ -129,6 +146,7 @@ class DictationOverlay(QWidget):
         self._on_toggle_callbacks = []
         self._on_press_callbacks = []
         self._on_release_callbacks = []
+        self._preview_text = ""
         self._hold_to_talk = False
         self._opacity_effect = QGraphicsOpacityEffect(self._listen_button)
         self._listen_button.setGraphicsEffect(self._opacity_effect)
@@ -157,11 +175,17 @@ class DictationOverlay(QWidget):
         self._status_label.setStyleSheet("color: #9aa0a6; font-size: 11px; font-weight: 600;")
         self._status_label.hide()
         layout.addWidget(self._status_label)
-        self._partial_label = QLabel()
-        self._partial_label.setWordWrap(False)
-        self._partial_label.setStyleSheet("color: #c8d0d8; font-size: 11px;")
-        self._partial_label.hide()
-        layout.addWidget(self._partial_label)
+        self._preview_label = QLabel("")
+        self._preview_label.setWordWrap(True)
+        self._preview_label.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+        self._preview_label.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
+        )
+        self._preview_label.setStyleSheet(
+            "color: #e6e9ec; background: transparent; font-size: 13px;"
+        )
+        self._preview_label.hide()
+        layout.addWidget(self._preview_label)
         self._hint_label = QLabel()
         self._hint_label.hide()
         self._transcription_edit = QTextEdit()
@@ -237,10 +261,16 @@ class DictationOverlay(QWidget):
 
         self._state = resolved_state
         self._is_listening = resolved_state is OverlayState.LISTENING
-        self._status_label.setVisible(resolved_state is not OverlayState.READY)
-        if resolved_state is not OverlayState.LISTENING:
-            self._partial_label.clear()
-            self._partial_label.hide()
+        # The workspace window stays hidden in tray mode, so this control is
+        # the only visible UI. Every state change has to bring it back on
+        # screen: dictation started from the hotkey used to animate a widget
+        # nobody could see once the control had been dismissed.
+        self.show()
+        # Listening starts compact (a bare microphone); it grows once whisper
+        # returns the first live preview, so the control shows the transcript
+        # only when there is one.
+        compact = resolved_state in (OverlayState.READY, OverlayState.LISTENING)
+        self._status_label.setVisible(not compact)
         self._listen_button.set_listening(self._is_listening)
         self._pulse_animation.stop()
         self._opacity_effect.setOpacity(1.0)
@@ -264,9 +294,11 @@ class DictationOverlay(QWidget):
         self._status_label.setStyleSheet(
             f"color: {colors[resolved_state]}; font-size: 11px; font-weight: 600;"
         )
-        width = 420 if self._partial_label.isVisible() else 190
-        self._resize_control(width if resolved_state is not OverlayState.READY else 72, 72)
-        self._listen_button.setToolTip(label)
+        self._update_preview_geometry()
+        tooltip = label
+        if resolved_state is OverlayState.LISTENING:
+            tooltip = "Listening... (Enter or the shortcut finishes)"
+        self._listen_button.setToolTip(tooltip)
         self._set_button_style(colors[resolved_state], "#ffffff")
 
         if self._is_listening:
@@ -298,21 +330,16 @@ class DictationOverlay(QWidget):
             elapsed = time.monotonic() - self._listening_started_at
             self._status_label.setText(f"Listening {self.format_elapsed(elapsed)}")
 
-    def set_partial_text(self, text: str) -> None:
-        """Show the latest non-final transcription preview while listening."""
-        if self._state is not OverlayState.LISTENING or not text.strip():
-            return
-        self._partial_label.setText(text.strip())
-        self._partial_label.setToolTip(text.strip())
-        self._partial_label.show()
-        self._resize_control(420, 72)
-
     def _resize_control(self, width: int, height: int) -> None:
         self.setFixedSize(width, height)
         screen = self.screen()
-        if screen:
-            geometry = screen.availableGeometry()
-            self.move(geometry.right() - width - 20, geometry.bottom() - height - 20)
+        if not screen or self._user_positioned:
+            # A dragged overlay keeps the corner it was dropped at; live
+            # previews resize it ~once a second, and re-anchoring each time
+            # would fight the user.
+            return
+        geometry = screen.availableGeometry()
+        self.move(geometry.right() - width - 20, geometry.bottom() - height - 20)
 
     def _set_button_style(self, background: str, foreground: str) -> None:
         self._listen_button.setStyleSheet("QPushButton { background: transparent; border: none; }")
@@ -351,8 +378,16 @@ class DictationOverlay(QWidget):
         return self._transcription_edit.toPlainText()
     
     def _on_auto_hide(self) -> None:
-        """Handle auto-hide timer"""
-        if not self._is_listening and time.time() - self._last_activity_time >= 3.0:
+        """Handle auto-hide timer.
+
+        Only the transient transcription panel is dismissible this way. The
+        microphone control is the app's primary UI in tray mode, so hiding it
+        after a mouse pass-by left the whole app invisible: the hotkey still
+        dictated, but no listening animation or feedback was ever on screen.
+        """
+        if self._is_listening or not self._transcription_edit.isVisible():
+            return
+        if time.time() - self._last_activity_time >= 3.0:
             self.hide()
     
     def show(self) -> None:
@@ -408,6 +443,50 @@ class DictationOverlay(QWidget):
         self._set_button_style(color, "#ffffff")
         QTimer.singleShot(1800, lambda: self.set_listening(False))
 
+    def set_live_preview(self, text: str) -> None:
+        """Show what whisper hears as the user speaks (WhisperFlow-style).
+
+        The control grows from its compact microphone into a transcript strip
+        once there is text, and never steals focus from the dictation target.
+        """
+        self._preview_text = (text or "").strip()
+        self._update_preview_geometry()
+        self._last_activity_time = time.time()
+        self.show()
+
+    def _preview_visible(self) -> bool:
+        """The preview strip is drawn only while it carries the current result."""
+        return bool(self._preview_text) and self._state in (
+            OverlayState.LISTENING,
+            OverlayState.PROCESSING,
+            OverlayState.INSERTED,
+            OverlayState.ERROR,
+        )
+
+    def _preferred_width(self, compact: bool) -> int:
+        """Width that fits the visible control, anchored to the screen corner."""
+        if compact and not self._preview_visible():
+            return 72
+        width = 85  # margins (7+12) + microphone button (58) + spacing (8)
+        if self._preview_visible():
+            width += min(420, max(120, self._preview_label.sizeHint().width()))
+        if not compact and self._status_label.isVisible():
+            width += self._status_label.sizeHint().width() + 8
+        return max(72, width)
+
+    def _update_preview_geometry(self) -> None:
+        """Match the preview strip's visibility to the current result."""
+        visible = self._preview_visible()
+        self._preview_label.setText(self._preview_text)
+        if self._preview_label.isVisible() != visible:
+            self._preview_label.setVisible(visible)
+        compact = self._state in (OverlayState.READY, OverlayState.LISTENING)
+        self._resize_control(self._preferred_width(compact), 72)
+
+    def clear_live_preview(self) -> None:
+        """Drop the preview and return the control to its compact size."""
+        self.set_live_preview("")
+
     def _emit_toggle(self) -> None:
         if self._hold_to_talk:
             return
@@ -458,6 +537,8 @@ class DictationOverlay(QWidget):
         """Handle mouse move for dragging"""
         if event.buttons() == Qt.MouseButton.LeftButton and hasattr(self, '_drag_start_position'):
             delta = event.globalPosition().toPoint() - self._drag_start_position
+            if delta.manhattanLength() > 0:
+                self._user_positioned = True
             self.move(self._window_start_position + delta)
             event.accept()
     
@@ -467,8 +548,12 @@ class DictationOverlay(QWidget):
         super().enterEvent(event)
     
     def leaveEvent(self, event) -> None:
-        """Handle mouse leave"""
-        if not self._is_listening:
+        """Handle mouse leave.
+
+        Only the transient transcription panel is auto-hidden; the microphone
+        control stays put so the listening animation is always reachable.
+        """
+        if not self._is_listening and self._transcription_edit.isVisible():
             self._auto_hide_timer.start(3000)
         super().leaveEvent(event)
 
