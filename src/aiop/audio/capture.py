@@ -3,6 +3,7 @@ Audio capture for AIOP
 """
 
 import time
+import threading
 import pyaudio
 from typing import Generator, Optional, Callable, List
 from dataclasses import dataclass, field
@@ -72,7 +73,12 @@ class AudioChunk:
 
 class AudioStream:
     """Audio stream for continuous capture"""
-    
+
+    # A stuck driver can make Pa_OpenStream block forever (seen with a wedged
+    # MME capture device). The open runs on a worker thread so a hung call
+    # surfaces as an AudioError instead of freezing the whole application.
+    _open_timeout = 8.0
+
     def __init__(
         self,
         parameters: AudioParameters,
@@ -84,41 +90,80 @@ class AudioStream:
         self.stream: Optional[pyaudio.Stream] = None
         self.is_running = False
         self._frames: list = []
-    
+        self._opening = False
+
     def start(self) -> None:
         """Start audio capture"""
         if self.is_running:
             logger.warning("Audio stream already running")
             return
-        
+        if self._opening:
+            raise exceptions.AudioError("Microphone is already starting up")
+
+        # Determine device index
+        device_index = self.parameters.device_index
+        if device_index is None:
+            default_input = get_audio_devices().get_default_input_device()
+            if default_input:
+                device_index = default_input.index
+            else:
+                raise exceptions.AudioError("No default input device found")
+
+        self._opening = True
         try:
-            # Determine device index
-            device_index = self.parameters.device_index
-            if device_index is None:
-                default_input = get_audio_devices().get_default_input_device()
-                if default_input:
-                    device_index = default_input.index
-                else:
-                    raise exceptions.AudioError("No default input device found")
-            
-            # Open stream
-            self.stream = self.pyaudio.open(
-                format=self.parameters.format.value,
-                channels=self.parameters.channels,
-                rate=self.parameters.sample_rate,
-                input=True,
-                frames_per_buffer=self.parameters.chunk_size,
-                input_device_index=device_index,
-                stream_callback=self._callback if self.callback else None,
-            )
-            
-            self.stream.start_stream()
+            self._open_with_timeout(device_index)
+        finally:
+            self._opening = False
+
+    def _open_with_timeout(self, device_index: int) -> None:
+        """Open the device with a hard deadline so a hung driver cannot stall UI."""
+        result: dict = {}
+
+        def open_stream() -> None:
+            try:
+                stream = self.pyaudio.open(
+                    format=self.parameters.format.value,
+                    channels=self.parameters.channels,
+                    rate=self.parameters.sample_rate,
+                    input=True,
+                    frames_per_buffer=self.parameters.chunk_size,
+                    input_device_index=device_index,
+                    stream_callback=self._callback if self.callback else None,
+                )
+                stream.start_stream()
+                result["stream"] = stream
+            except Exception as error:
+                result["error"] = error
+
+        worker = threading.Thread(target=open_stream, daemon=True)
+        worker.start()
+        worker.join(timeout=self._open_timeout)
+
+        if "stream" in result:
+            self.stream = result["stream"]
             self.is_running = True
-            logger.info(f"Audio stream started: {self.parameters.sample_rate}Hz, {self.parameters.channels} channels")
-            
-        except Exception as e:
-            raise exceptions.AudioError(f"Failed to start audio stream: {e}")
-    
+            logger.info(
+                "Audio stream started: %sHz, %s channels",
+                self.parameters.sample_rate,
+                self.parameters.channels,
+            )
+            return
+
+        if "error" in result:
+            raise exceptions.AudioError(
+                f"Failed to start audio stream: {result['error']}"
+            )
+
+        logger.error(
+            "Timed out after %.1fs opening the microphone; the audio device "
+            "is busy or hung",
+            self._open_timeout,
+        )
+        raise exceptions.AudioError(
+            "Timed out opening the microphone. The audio device appears to be "
+            "busy or in a bad state."
+        )
+
     def stop(self) -> None:
         """Stop audio capture"""
         if not self.is_running:
